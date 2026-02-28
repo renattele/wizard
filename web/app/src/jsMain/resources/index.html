@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wizard v1</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="container">
+    <h1>Wizard v1</h1>
+    <p class="subtitle">Manifest-driven architecture and dependency resolver</p>
+
+    <section>
+        <label for="template">Template</label>
+        <input id="template" value="android-app" />
+    </section>
+
+    <section>
+        <h2>Catalog Options</h2>
+        <div id="catalog"></div>
+    </section>
+
+    <section class="actions">
+        <button id="resolveBtn">Resolve</button>
+    </section>
+
+    <section>
+        <h2>Result</h2>
+        <pre id="result"></pre>
+    </section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

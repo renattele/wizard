@@ -1,0 +1,58 @@
+{
+  "id": "pack-arch",
+  "version": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "arch-mvvm",
+      "type": "ARCHITECTURE",
+      "category": "architecture",
+      "displayName": "MVVM",
+      "description": "Model-View-ViewModel architecture",
+      "dependency": {
+        "requiresOptionIds": ["ui-compose"],
+        "requiresCapabilities": ["ui:compose"],
+        "providesCapabilities": ["arch:mvvm"],
+        "conflictsHard": ["arch-mvi"]
+      },
+      "version": {
+        "recommended": "1.0.0",
+        "supported": ["1.0.0"],
+        "range": "1.x"
+      },
+      "patches": [
+        {
+          "type": "APPEND_FILE",
+          "targetPath": "README.md",
+          "content": "Architecture: MVVM\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "arch-mvi",
+      "type": "ARCHITECTURE",
+      "category": "architecture",
+      "displayName": "MVI",
+      "description": "Model-View-Intent architecture",
+      "dependency": {
+        "requiresOptionIds": ["ui-compose"],
+        "requiresCapabilities": ["ui:compose"],
+        "providesCapabilities": ["arch:mvi"],
+        "conflictsHard": ["arch-mvvm"]
+      },
+      "version": {
+        "recommended": "1.0.0",
+        "supported": ["1.0.0"],
+        "range": "1.x"
+      }
+    }
+  ]
+}

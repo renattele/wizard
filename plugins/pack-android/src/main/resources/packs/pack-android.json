@@ -1,0 +1,51 @@
+{
+  "id": "pack-android",
+  "version": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "target-android",
+      "type": "BASE",
+      "category": "target",
+      "displayName": "Android Target",
+      "description": "Android project target",
+      "defaultEnabled": true,
+      "dependency": {
+        "requiresOptionIds": ["base-kotlin"],
+        "requiresCapabilities": ["lang:kotlin"],
+        "providesCapabilities": ["target:android"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "35",
+        "supported": ["34", "35"],
+        "range": null
+      }
+    },
+    {
+      "id": "library-ktor-client",
+      "type": "LIBRARY",
+      "category": "network",
+      "displayName": "Ktor Client",
+      "description": "HTTP client layer",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["build:gradle-kts"],
+        "providesCapabilities": ["network:http-client"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "3.3.3",
+        "supported": ["3.2.0", "3.3.3"],
+        "range": "3.x"
+      }
+    }
+  ]
+}

@@ -1,61 +1,34 @@
-This is a Kotlin Multiplatform project targeting Web, Server.
+# Wizard v1 Platform
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Wizard v1 is a manifest-driven project generation platform with strict dependency/version governance.
 
-* [/server](./server/src/main/kotlin) is for the Ktor server application.
+## Modules
 
-* [/shared](./shared/src) is for the code that will be shared between all targets in the project.
-  The most important subfolder is [commonMain](./shared/src/commonMain/kotlin). If preferred, you
-  can add code to the platform-specific folders here too.
+- `contracts:core` - API v1 contracts and lockfile model
+- `contracts:manifest` - plugin pack manifests and compatibility contracts
+- `engine:*` - catalog, resolver, generator, security engines
+- `plugins:*` - in-repo plugin packs
+- `server:api` - Ktor API `/api/v1/*`
+- `web:app` - Kotlin/JS metadata-driven UI
+- `build-logic` - convention plugins
 
-### Build and Run Server
+## Build (Java 21)
 
-To build and run the development version of the server, use the run configuration from the run widget
-in your IDE’s toolbar or run it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :server:run
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :server:run
-  ```
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew build --no-daemon
+```
 
-### Build and Run Web Application
+## Governance
 
-To build and run the development version of the web app, use the run configuration from the run widget
-in your IDE's toolbar or run it directly from the terminal:
-- for the Wasm target (faster, modern browsers):
-  - on macOS/Linux
-    ```shell
-    ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
-    ```
-  - on Windows
-    ```shell
-    .\gradlew.bat :composeApp:wasmJsBrowserDevelopmentRun
-    ```
-- for the JS target (slower, supports older browsers):
-  - on macOS/Linux
-    ```shell
-    ./gradlew :composeApp:jsBrowserDevelopmentRun
-    ```
-  - on Windows
-    ```shell
-    .\gradlew.bat :composeApp:jsBrowserDevelopmentRun
-    ```
+- dependency locking is enabled
+- dependency verification metadata is required (`gradle/verification-metadata.xml`)
+- compatibility gates run via `./gradlew compatibilityCheck`
+- lockfile policy runs via `./gradlew lockfileCheck`
 
----
+## API
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
-
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+- `/api/v1/catalog`
+- `/api/v1/resolve`
+- `/api/v1/preview`
+- `/api/v1/export`
+- `/api/v1/health`

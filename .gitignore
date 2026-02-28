@@ -81,3 +81,4 @@ local.properties
 
 .kotlin
 kotlin-js-store
+.gradle-local/

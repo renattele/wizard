@@ -1,0 +1,106 @@
+{
+  "id": "pack-core",
+  "version": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "templates": [
+    {
+      "id": "android-app",
+      "displayName": "Android App",
+      "description": "Android baseline template",
+      "version": "1.0.0",
+      "tags": ["android", "kotlin"],
+      "baseOptionIds": ["base-kotlin", "build-gradle-kts"]
+    }
+  ],
+  "options": [
+    {
+      "id": "base-kotlin",
+      "type": "BASE",
+      "category": "base",
+      "displayName": "Kotlin Base",
+      "description": "Core Kotlin project setup",
+      "defaultEnabled": true,
+      "dependency": {
+        "requiresOptionIds": [],
+        "requiresCapabilities": [],
+        "providesCapabilities": ["lang:kotlin"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "2.3.0",
+        "supported": ["2.2.0", "2.3.0"],
+        "range": "2.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_FILE",
+          "targetPath": "README.md",
+          "content": "# Generated Project\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "build-gradle-kts",
+      "type": "BUILD_SYSTEM",
+      "category": "build",
+      "displayName": "Gradle Kotlin DSL",
+      "description": "Gradle build with Kotlin DSL",
+      "defaultEnabled": true,
+      "dependency": {
+        "requiresOptionIds": ["base-kotlin"],
+        "requiresCapabilities": ["lang:kotlin"],
+        "providesCapabilities": ["build:gradle-kts"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "8.14.3",
+        "supported": ["8.10.2", "8.14.3"],
+        "range": "8.x"
+      }
+    },
+    {
+      "id": "quality-detekt",
+      "type": "QUALITY",
+      "category": "quality",
+      "displayName": "Detekt",
+      "description": "Static analysis",
+      "dependency": {
+        "requiresOptionIds": ["build-gradle-kts"],
+        "requiresCapabilities": [],
+        "providesCapabilities": ["quality:detekt"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "1.23.8",
+        "supported": ["1.23.8"],
+        "range": "1.x"
+      }
+    },
+    {
+      "id": "ci-github-actions",
+      "type": "CI",
+      "category": "ci",
+      "displayName": "GitHub Actions",
+      "description": "CI workflow for Gradle build",
+      "dependency": {
+        "requiresOptionIds": ["build-gradle-kts"],
+        "requiresCapabilities": [],
+        "providesCapabilities": ["ci:github-actions"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "v4",
+        "supported": ["v4"],
+        "range": null
+      }
+    }
+  ]
+}

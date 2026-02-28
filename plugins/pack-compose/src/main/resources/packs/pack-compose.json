@@ -1,0 +1,59 @@
+{
+  "id": "pack-compose",
+  "version": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "ui-compose",
+      "type": "UI_FRAMEWORK",
+      "category": "ui",
+      "displayName": "Compose",
+      "description": "Compose UI toolkit",
+      "defaultEnabled": true,
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["build:gradle-kts"],
+        "providesCapabilities": ["ui:compose"],
+        "conflictsHard": ["ui-xml"]
+      },
+      "version": {
+        "recommended": "1.10.0",
+        "supported": ["1.9.0", "1.10.0"],
+        "range": "1.x"
+      },
+      "patches": [
+        {
+          "type": "APPEND_FILE",
+          "targetPath": "README.md",
+          "content": "UI: Compose\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "ui-xml",
+      "type": "UI_FRAMEWORK",
+      "category": "ui",
+      "displayName": "XML Views",
+      "description": "Classic XML UI",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["build:gradle-kts"],
+        "providesCapabilities": ["ui:xml"],
+        "conflictsHard": ["ui-compose"]
+      },
+      "version": {
+        "recommended": "1.0.0",
+        "supported": ["1.0.0"],
+        "range": "1.x"
+      }
+    }
+  ]
+}

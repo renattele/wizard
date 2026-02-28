@@ -1,0 +1,30 @@
+name: Changelog Policy
+
+on:
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "plugins/**"
+      - "engine/**"
+
+jobs:
+  changelog-required:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify changelog updates
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          echo "$CHANGED"
+
+          if echo "$CHANGED" | grep -E '^(contracts|plugins|engine)/' >/dev/null; then
+            if ! echo "$CHANGED" | grep -E '^docs/changelog.md$' >/dev/null; then
+              echo "docs/changelog.md must be updated when contracts/plugins/engine change"
+              exit 1
+            fi
+          fi
