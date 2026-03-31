@@ -21,7 +21,6 @@ JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew build --no-daemon
 ## Governance
 
 - dependency locking is enabled
-- dependency verification metadata is required (`gradle/verification-metadata.xml`)
 - compatibility gates run via `./gradlew compatibilityCheck`
 - lockfile policy runs via `./gradlew lockfileCheck`
 

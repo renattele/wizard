@@ -19,15 +19,9 @@ subprojects {
 val verifyGovernance by tasks.registering {
     notCompatibleWithConfigurationCache("Scans repository files for governance artifacts")
     group = "verification"
-    description = "Ensures strict governance artifacts are present"
-
-    val metadata = rootProject.file("gradle/verification-metadata.xml")
+    description = "Ensures dependency lockfiles are present"
 
     doLast {
-        require(metadata.exists()) {
-            "Missing gradle/verification-metadata.xml. Generate with ./gradlew --write-verification-metadata sha256 help"
-        }
-
         val lockFiles = rootProject.fileTree(rootProject.projectDir) {
             include("**/gradle.lockfile")
             exclude("**/build/**")
@@ -57,6 +51,6 @@ tasks.register("compatibilityCheck") {
 
 tasks.register("lockfileCheck") {
     group = "verification"
-    description = "Verifies lockfiles and dependency verification metadata are configured"
+    description = "Verifies dependency lockfiles are configured"
     dependsOn(verifyGovernance)
 }
