@@ -46,6 +46,7 @@ tasks.register("compatibilityCheck") {
     dependsOn(
         ":contracts:core:check",
         ":contracts:manifest:check",
+        ":engine:configuration:test",
         ":engine:resolver:test",
         ":engine:generator:test",
         ":engine:catalog:test",

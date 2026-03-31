@@ -17,8 +17,8 @@
       "displayName": "MVVM",
       "description": "Model-View-ViewModel architecture",
       "dependency": {
-        "requiresOptionIds": ["ui-compose"],
-        "requiresCapabilities": ["ui:compose"],
+        "requiresOptionIds": [],
+        "requiresCapabilities": ["ui:framework"],
         "providesCapabilities": ["arch:mvvm"],
         "conflictsHard": ["arch-mvi"]
       },
@@ -27,11 +27,90 @@
         "supported": ["1.0.0"],
         "range": "1.x"
       },
+      "parameters": [
+        {
+          "id": "featureName",
+          "displayName": "Feature Name",
+          "description": "Logical feature name used in generated MVVM files.",
+          "type": "STRING",
+          "required": true,
+          "defaultValue": "${Feature}"
+        },
+        {
+          "id": "viewModelName",
+          "displayName": "ViewModel Class",
+          "description": "Generated ViewModel class name.",
+          "type": "STRING",
+          "required": true,
+          "defaultValue": "${Param.featureName}ViewModel"
+        },
+        {
+          "id": "stateName",
+          "displayName": "State Class",
+          "description": "Generated UI state type name.",
+          "type": "STRING",
+          "required": true,
+          "defaultValue": "${Param.featureName}UiState"
+        },
+        {
+          "id": "eventName",
+          "displayName": "Event Class",
+          "description": "Generated UI event type name.",
+          "type": "STRING",
+          "required": true,
+          "defaultValue": "${Param.featureName}UiEvent"
+        }
+      ],
       "patches": [
         {
           "type": "APPEND_FILE",
           "targetPath": "README.md",
-          "content": "Architecture: MVVM\\n",
+          "content": "Architecture: MVVM (${Param.featureName})\\nViewModel: ${Param.viewModelName}\\nState: ${Param.stateName}\\nEvents: ${Param.eventName}\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Param.viewModelName}.kt",
+          "content": "package ${Package}.presentation\\n\\nclass ${Param.viewModelName}(\\n    val initialState: ${Param.stateName} = ${Param.stateName}(),\\n)\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Param.stateName}.kt",
+          "content": "package ${Package}.presentation\\n\\ndata class ${Param.stateName}(\\n    val title: String = \"${Param.featureName}\",\\n)\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Param.eventName}.kt",
+          "content": "package ${Package}.presentation\\n\\nsealed interface ${Param.eventName}\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Param.featureName}Screen.kt",
+          "content": "package ${Package}.presentation\\n\\nimport androidx.compose.runtime.Composable\\n\\n@Composable\\nfun ${Param.featureName}Screen(\\n    state: ${Param.stateName},\\n    onEvent: (${Param.eventName}) -> Unit = {},\\n) {\\n    onEvent\\n    androidx.compose.material3.Text(text = state.title)\\n}\\n",
+          "activation": {
+            "requiresCapabilities": ["ui:compose"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/androidMain/kotlin/${PackagePath}/presentation/${Param.featureName}Fragment.kt",
+          "content": "package ${Package}.presentation\\n\\nimport androidx.fragment.app.Fragment\\n\\nclass ${Param.featureName}Fragment : Fragment()\\n",
+          "activation": {
+            "requiresCapabilities": ["ui:xml"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/androidMain/res/layout/fragment_${Param.featureName}.xml",
+          "content": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\\n<FrameLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\\n    android:layout_width=\"match_parent\"\\n    android:layout_height=\"match_parent\">\\n\\n    <TextView\\n        android:layout_width=\"wrap_content\"\\n        android:layout_height=\"wrap_content\"\\n        android:text=\"${Param.featureName}\" />\\n</FrameLayout>\\n",
+          "activation": {
+            "requiresCapabilities": ["ui:xml"]
+          },
           "conflictStrategy": "MERGE_WITH_RULE"
         }
       ]
@@ -43,8 +122,8 @@
       "displayName": "MVI",
       "description": "Model-View-Intent architecture",
       "dependency": {
-        "requiresOptionIds": ["ui-compose"],
-        "requiresCapabilities": ["ui:compose"],
+        "requiresOptionIds": [],
+        "requiresCapabilities": ["ui:framework"],
         "providesCapabilities": ["arch:mvi"],
         "conflictsHard": ["arch-mvvm"]
       },
@@ -52,7 +131,60 @@
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
-      }
+      },
+      "patches": [
+        {
+          "type": "APPEND_FILE",
+          "targetPath": "README.md",
+          "content": "Architecture: MVI (${Feature})\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Feature}State.kt",
+          "content": "package ${Package}.presentation\\n\\ndata class ${Feature}State(\\n    val title: String = \"${Feature}\",\\n)\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Feature}Intent.kt",
+          "content": "package ${Package}.presentation\\n\\nsealed interface ${Feature}Intent\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Feature}Store.kt",
+          "content": "package ${Package}.presentation\\n\\nclass ${Feature}Store(\\n    val state: ${Feature}State = ${Feature}State(),\\n)\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/commonMain/kotlin/${PackagePath}/presentation/${Feature}Screen.kt",
+          "content": "package ${Package}.presentation\\n\\nimport androidx.compose.runtime.Composable\\n\\n@Composable\\nfun ${Feature}Screen(\\n    state: ${Feature}State,\\n    dispatch: (${Feature}Intent) -> Unit = {},\\n) {\\n    dispatch\\n    androidx.compose.material3.Text(text = state.title)\\n}\\n",
+          "activation": {
+            "requiresCapabilities": ["ui:compose"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/androidMain/kotlin/${PackagePath}/presentation/${Feature}Fragment.kt",
+          "content": "package ${Package}.presentation\\n\\nimport androidx.fragment.app.Fragment\\n\\nclass ${Feature}Fragment : Fragment()\\n",
+          "activation": {
+            "requiresCapabilities": ["ui:xml"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": "src/androidMain/res/layout/fragment_${Feature}.xml",
+          "content": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\\n<FrameLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\\n    android:layout_width=\"match_parent\"\\n    android:layout_height=\"match_parent\">\\n\\n    <TextView\\n        android:layout_width=\"wrap_content\"\\n        android:layout_height=\"wrap_content\"\\n        android:text=\"${Feature}\" />\\n</FrameLayout>\\n",
+          "activation": {
+            "requiresCapabilities": ["ui:xml"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
     }
   ]
 }

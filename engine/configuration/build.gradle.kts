@@ -6,7 +6,6 @@ dependencies {
     implementation(projects.contracts.core)
     implementation(projects.contracts.manifest)
     implementation(projects.engine.catalog)
-    implementation(projects.engine.configuration)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.testJunit)

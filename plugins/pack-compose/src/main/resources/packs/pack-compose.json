@@ -20,7 +20,7 @@
       "dependency": {
         "requiresOptionIds": ["target-android"],
         "requiresCapabilities": ["build:gradle-kts"],
-        "providesCapabilities": ["ui:compose"],
+        "providesCapabilities": ["ui:framework", "ui:compose"],
         "conflictsHard": ["ui-xml"]
       },
       "version": {
@@ -46,7 +46,7 @@
       "dependency": {
         "requiresOptionIds": ["target-android"],
         "requiresCapabilities": ["build:gradle-kts"],
-        "providesCapabilities": ["ui:xml"],
+        "providesCapabilities": ["ui:framework", "ui:xml"],
         "conflictsHard": ["ui-compose"]
       },
       "version": {

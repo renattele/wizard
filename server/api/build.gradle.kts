@@ -12,6 +12,7 @@ dependencies {
     implementation(projects.contracts.core)
     implementation(projects.contracts.manifest)
     implementation(projects.engine.catalog)
+    implementation(projects.engine.configuration)
     implementation(projects.engine.generator)
     implementation(projects.engine.resolver)
     implementation(projects.engine.security)

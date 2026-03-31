@@ -13,7 +13,14 @@
 
     <section>
         <label for="template">Template</label>
-        <input id="template" value="android-app" />
+        <select id="template"></select>
+    </section>
+
+    <section>
+        <label for="architecturePreset">Architecture</label>
+        <select id="architecturePreset">
+            <option value="">None</option>
+        </select>
     </section>
 
     <section>
@@ -21,8 +28,55 @@
         <div id="catalog"></div>
     </section>
 
+    <section>
+        <h2>Option Parameters</h2>
+        <p class="subtitle">
+            Configure selected preset options such as MVVM naming and Kotlin compiler settings.
+        </p>
+        <div id="optionParameters"></div>
+    </section>
+
+    <section>
+        <h2>Advanced Configuration</h2>
+        <p class="subtitle">
+            Optional JSON for custom architecture, project metadata, context variables, and user patches.
+        </p>
+        <textarea id="advancedConfig" spellcheck="false" placeholder='{
+  "projectConfig": {
+    "projectName": "Demo App",
+    "packageId": "com.example.demo",
+    "designSystemPrefix": "T"
+  },
+  "contextVars": {
+    "Feature": "Catalog"
+  },
+  "architecture": {
+    "mode": "CUSTOM",
+    "customComponentTypes": [
+      {
+        "id": "coordinator",
+        "displayName": "Coordinator",
+        "layer": "presentation",
+        "fileNameTemplate": "feature/${Feature}/Coordinator.kt",
+        "sourceTemplate": "package ${Package}.feature.${Feature}\n\nclass ${ComponentName}",
+        "allowedDependencyTypeIds": ["interactor", "router"]
+      }
+    ]
+  },
+  "customPatches": [
+    {
+      "sourceId": "readme-note",
+      "operation": "APPEND_FILE",
+      "targetPath": "README.md",
+      "content": "\nGenerated for ${ProjectName}"
+    }
+  ]
+}'></textarea>
+    </section>
+
     <section class="actions">
         <button id="resolveBtn">Resolve</button>
+        <button id="previewBtn" class="secondary">Preview</button>
     </section>
 
     <section>

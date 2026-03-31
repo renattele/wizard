@@ -1,8 +1,11 @@
 package ru.renattele.wizard.engine.resolver
 
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import ru.renattele.wizard.contracts.v1.OptionTypeV1
+import ru.renattele.wizard.contracts.v1.ProblemCodeV1
 import ru.renattele.wizard.contracts.v1.ResolveRequestV1
-import ru.renattele.wizard.contracts.v1.ResolutionCodeV1
 import ru.renattele.wizard.contracts.v1.WizardSelectionV1
 import ru.renattele.wizard.engine.catalog.CatalogBundle
 import ru.renattele.wizard.engine.catalog.CatalogPackDescriptor
@@ -11,9 +14,6 @@ import ru.renattele.wizard.manifest.OptionManifest
 import ru.renattele.wizard.manifest.OptionVersionManifest
 import ru.renattele.wizard.manifest.PluginPackManifest
 import ru.renattele.wizard.manifest.TemplateManifest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class DeterministicResolutionEngineTest {
     private val resolver = DeterministicResolutionEngine()
@@ -31,7 +31,7 @@ class DeterministicResolutionEngineTest {
         val first = resolver.resolve(request, catalog)
         val second = resolver.resolve(request, catalog)
 
-        assertEquals(first.orderedOptionIds, second.orderedOptionIds)
+        assertEquals(first.applyOrder, second.applyOrder)
         assertEquals(first.lockfile.resolutionHash, second.lockfile.resolutionHash)
     }
 
@@ -59,7 +59,7 @@ class DeterministicResolutionEngineTest {
 
         val response = resolver.resolve(request, catalog)
 
-        assertTrue(response.issues.any { it.code == ResolutionCodeV1.HARD_CONFLICT })
+        assertTrue(response.problems.any { it.code == ProblemCodeV1.HARD_CONFLICT })
     }
 
     @Test
@@ -75,7 +75,7 @@ class DeterministicResolutionEngineTest {
 
         val response = resolver.resolve(request, catalog)
 
-        assertTrue(response.issues.any { it.code == ResolutionCodeV1.VERSION_OUT_OF_RANGE })
+        assertTrue(response.problems.any { it.code == ProblemCodeV1.VERSION_OUT_OF_RANGE })
     }
 
     private fun testCatalog(extraOptions: List<OptionManifest> = emptyList()): CatalogBundle {

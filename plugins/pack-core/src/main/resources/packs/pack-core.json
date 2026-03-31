@@ -38,11 +38,45 @@
         "supported": ["2.2.0", "2.3.0"],
         "range": "2.x"
       },
+      "parameters": [
+        {
+          "id": "explicitApiMode",
+          "displayName": "Explicit API Mode",
+          "description": "Stores the desired explicit API policy for downstream project templates.",
+          "type": "ENUM",
+          "defaultValue": "disabled",
+          "allowedValues": [
+            { "value": "disabled", "displayName": "Disabled" },
+            { "value": "warning", "displayName": "Warning" },
+            { "value": "strict", "displayName": "Strict" }
+          ]
+        },
+        {
+          "id": "enableContextParameters",
+          "displayName": "Enable Context Parameters",
+          "description": "Stores whether context parameters should be enabled in generated Kotlin settings.",
+          "type": "BOOLEAN",
+          "defaultValue": "false"
+        },
+        {
+          "id": "optInAnnotations",
+          "displayName": "Opt-In Annotations",
+          "description": "Comma or newline separated opt-in annotations for generated Kotlin settings.",
+          "type": "MULTILINE",
+          "defaultValue": "kotlinx.coroutines.ExperimentalCoroutinesApi"
+        }
+      ],
       "patches": [
         {
           "type": "ADD_FILE",
           "targetPath": "README.md",
           "content": "# Generated Project\\n",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_FILE",
+          "targetPath": ".wizard/kotlin/settings.properties",
+          "content": "kotlin.package=${Package}\\nkotlin.explicitApiMode=${Param.explicitApiMode}\\nkotlin.enableContextParameters=${Param.enableContextParameters}\\nkotlin.optInAnnotations=${Param.optInAnnotations}\\n",
           "conflictStrategy": "MERGE_WITH_RULE"
         }
       ]

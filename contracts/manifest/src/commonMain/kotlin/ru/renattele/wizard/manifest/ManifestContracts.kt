@@ -43,8 +43,34 @@ data class OptionManifest(
     val dependency: OptionDependencyContract = OptionDependencyContract(),
     val version: OptionVersionManifest = OptionVersionManifest(),
     val artifact: RemoteArtifactDescriptor? = null,
+    val parameters: List<OptionParameterManifest> = emptyList(),
     val patches: List<PatchOperationManifest> = emptyList(),
 )
+
+@Serializable
+data class OptionParameterManifest(
+    val id: String,
+    val displayName: String,
+    val description: String = "",
+    val type: OptionParameterType = OptionParameterType.STRING,
+    val required: Boolean = false,
+    val defaultValue: String? = null,
+    val allowedValues: List<OptionParameterAllowedValueManifest> = emptyList(),
+)
+
+@Serializable
+data class OptionParameterAllowedValueManifest(
+    val value: String,
+    val displayName: String,
+)
+
+@Serializable
+enum class OptionParameterType {
+    STRING,
+    BOOLEAN,
+    ENUM,
+    MULTILINE,
+}
 
 @Serializable
 data class OptionDependencyContract(
@@ -83,7 +109,14 @@ data class PatchOperationManifest(
     val content: String? = null,
     val find: String? = null,
     val replace: String? = null,
+    val activation: PatchActivationManifest = PatchActivationManifest(),
     val conflictStrategy: ConflictStrategy = ConflictStrategy.FAIL,
+)
+
+@Serializable
+data class PatchActivationManifest(
+    val requiresOptionIds: List<String> = emptyList(),
+    val requiresCapabilities: List<String> = emptyList(),
 )
 
 @Serializable
