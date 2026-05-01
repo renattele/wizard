@@ -30,6 +30,8 @@ import ru.renattele.wizard.contracts.v1.ResolveResponseV1
 import ru.renattele.wizard.contracts.v1.WizardSelectionV1
 import ru.renattele.wizard.engine.catalog.ClasspathCatalogProvider
 import ru.renattele.wizard.engine.catalog.MergedCatalogProvider
+import ru.renattele.wizard.engine.configuration.application.LoadCatalogUseCase
+import ru.renattele.wizard.engine.configuration.domain.ConfigurationCatalog
 
 class ApplicationModuleTest {
     private val json = Json {
@@ -58,8 +60,14 @@ class ApplicationModuleTest {
         val body = response.bodyAsText()
         assertTrue(body.contains("\"di-hilt\""))
         assertTrue(body.contains("\"library-room\""))
+        assertTrue(body.contains("\"library-ktor-client\""))
+        assertTrue(body.contains("\"library-workmanager\""))
         assertTrue(body.contains("\"ci-github-actions\""))
         assertTrue(body.contains("\"ui-compose\""))
+        assertTrue(body.contains("\"android-app-lite\""))
+        assertTrue(body.contains("\"android-app-scalable\""))
+        assertTrue(body.contains("\"arch-udf\""))
+        assertTrue(body.contains("\"arch-viper-lite\""))
     }
 
     @Test
@@ -403,15 +411,102 @@ class ApplicationModuleTest {
     }
 
     @Test
-    fun `export matrix stays structurally healthy across supported combinations`() {
-        val service = WizardApiService(
-            MergedCatalogProvider(
-                localProvider = ClasspathCatalogProvider(localCatalogPaths),
-                remoteProvider = EmptyCatalogProvider,
+    fun `lite template only materializes infra modules required by selected stack`() {
+        val service = localWizardApiService()
+
+        val liteWithoutInfra = selection(
+            templateId = "android-app-lite",
+            optionIds = listOf("ui-compose", "arch-mvvm", "di-hilt", "ci-github-actions"),
+            architecture = presetArchitecture("arch-mvvm"),
+            featureNames = listOf("home"),
+        )
+        val liteResolved = service.resolve(ResolveRequestV1(selection = liteWithoutInfra, strictMode = true))
+        val liteExport = service.export(
+            ExportRequestV1(
+                selection = liteWithoutInfra,
+                lockfile = liteResolved.lockfile,
+                strictMode = true,
             ),
         )
+        val liteFiles = unzip(liteExport.artifact.archiveBase64)
 
-        allSupportedSelections().forEachIndexed { index, selection ->
+        assertTrue("core/network/build.gradle.kts" !in liteFiles, "lite template should skip core:network by default")
+        assertTrue("core/database/build.gradle.kts" !in liteFiles, "lite template should skip core:database by default")
+        assertTrue("core/testing/build.gradle.kts" !in liteFiles, "lite template should skip core:testing by default")
+
+        val liteWithInfra = selection(
+            templateId = "android-app-lite",
+            optionIds = listOf(
+                "ui-compose",
+                "arch-mvvm",
+                "di-hilt",
+                "library-retrofit",
+                "library-room",
+                "library-mockk",
+                "ci-github-actions",
+            ),
+            architecture = presetArchitecture("arch-mvvm"),
+            featureNames = listOf("home"),
+        )
+        val infraResolved = service.resolve(ResolveRequestV1(selection = liteWithInfra, strictMode = true))
+        val infraExport = service.export(
+            ExportRequestV1(
+                selection = liteWithInfra,
+                lockfile = infraResolved.lockfile,
+                strictMode = true,
+            ),
+        )
+        val infraFiles = unzip(infraExport.artifact.archiveBase64)
+
+        assertTrue("core/network/build.gradle.kts" in infraFiles, "lite template should materialize core:network when selected")
+        assertTrue("core/database/build.gradle.kts" in infraFiles, "lite template should materialize core:database when selected")
+        assertTrue("core/testing/build.gradle.kts" in infraFiles, "lite template should materialize core:testing when selected")
+    }
+
+    @Test
+    fun `scalable template includes extra shared scaffolding`() {
+        val service = localWizardApiService()
+        val selection = selection(
+            templateId = "android-app-scalable",
+            optionIds = listOf(
+                "ui-compose",
+                "arch-udf",
+                "di-koin",
+                "library-ktor-client",
+                "library-kotlinx-serialization",
+                "library-room",
+                "library-workmanager",
+                "ci-github-actions",
+            ),
+            architecture = presetArchitecture("arch-udf"),
+            featureNames = listOf("home"),
+        )
+        val resolved = service.resolve(ResolveRequestV1(selection = selection, strictMode = true))
+        val export = service.export(
+            ExportRequestV1(
+                selection = selection,
+                lockfile = resolved.lockfile,
+                strictMode = true,
+            ),
+        )
+        val files = unzip(export.artifact.archiveBase64)
+
+        assertTrue("core/analytics/build.gradle.kts" in files)
+        assertTrue("core/observability/build.gradle.kts" in files)
+        assertTrue("core/sync/build.gradle.kts" in files)
+        val appBuild = files.getValue("app/build.gradle.kts").decodeToString()
+        assertTrue("implementation(project(\":core:analytics\"))" in appBuild)
+        assertTrue("implementation(project(\":core:observability\"))" in appBuild)
+        assertTrue("implementation(project(\":core:sync\"))" in appBuild)
+    }
+
+    @Test
+    fun `export matrix stays structurally healthy across metadata driven combinations`() {
+        val service = WizardApiService(
+            localCatalogProvider(),
+        )
+
+        structuralSelections().forEachIndexed { index, selection ->
             val resolved = service.resolve(
                 ResolveRequestV1(
                     selection = selection,
@@ -441,6 +536,7 @@ class ApplicationModuleTest {
         assembleExportedProject(
             service = service,
             selection = selection(
+                templateId = "android-app",
                 optionIds = listOf(
                     "ui-compose",
                     "arch-mvvm",
@@ -450,50 +546,68 @@ class ApplicationModuleTest {
                     "quality-detekt",
                     "ci-github-actions",
                 ),
-                architecture = ArchitectureModelV1(
-                    mode = ArchitectureModeV1.PRESET,
-                    presetPatternId = "arch-mvvm",
-                ),
+                architecture = presetArchitecture("arch-mvvm"),
             ),
             tempPrefix = "compose-hilt",
         )
         assembleExportedProject(
             service = service,
             selection = selection(
+                templateId = "android-app-lite",
                 optionIds = listOf(
                     "ui-xml",
-                    "arch-mvp",
+                    "arch-viper-lite",
                     "di-dagger2",
-                    "library-room",
+                    "library-ktor-client",
+                    "library-kotlinx-serialization",
+                    "library-sqldelight",
+                    "library-chucker",
                     "ci-gitlab",
                 ),
-                architecture = ArchitectureModelV1(
-                    mode = ArchitectureModeV1.PRESET,
-                    presetPatternId = "arch-mvp",
-                ),
+                architecture = presetArchitecture("arch-viper-lite"),
             ),
-            tempPrefix = "xml-dagger",
+            tempPrefix = "lite-xml-viper",
         )
         assembleExportedProject(
             service = service,
             selection = selection(
+                templateId = "android-app-scalable",
                 optionIds = listOf(
                     "ui-compose",
-                    "arch-mvi",
+                    "arch-udf",
                     "di-koin",
-                    "library-coil",
-                    "library-retrofit",
+                    "library-ktor-client",
+                    "library-kotlinx-serialization",
                     "library-room",
+                    "library-datastore",
+                    "library-paging",
+                    "library-workmanager",
+                    "library-leakcanary",
                     "library-timber",
                     "quality-ktlint",
                     "ci-github-actions",
                 ),
-                architecture = ArchitectureModelV1(
-                    mode = ArchitectureModeV1.PRESET,
-                    presetPatternId = "arch-mvi",
-                ),
+                architecture = presetArchitecture("arch-udf"),
             ),
-            tempPrefix = "compose-koin",
+            tempPrefix = "scalable-udf",
+        )
+        assembleExportedProject(
+            service = service,
+            selection = selection(
+                templateId = "android-app",
+                optionIds = listOf(
+                    "ui-compose",
+                    "di-hilt",
+                    "library-retrofit",
+                    "library-room",
+                    "library-mockk",
+                    "library-turbine",
+                    "ci-github-actions",
+                ),
+                architecture = customArchitecture(),
+                featureNames = listOf("home"),
+            ),
+            tempPrefix = "custom-compose",
         )
     }
 
@@ -504,67 +618,22 @@ class ApplicationModuleTest {
         }
         val service = localWizardApiService()
 
-        val compileAffectingLibraries = listOf(
-            "library-retrofit",
-            "library-room",
-            "library-coil",
-            "library-timber",
-        )
-        val quality = listOf("quality-detekt", "quality-ktlint")
-
-        listOf("ui-compose", "ui-xml").forEach { ui ->
-            listOf("arch-mvvm", "arch-mvi", "arch-mvp").forEach { architectureId ->
-                listOf("di-hilt", "di-koin", "di-dagger2").forEach { di ->
-                    assembleExportedProject(
-                        service = service,
-                        selection = selection(
-                            optionIds = listOf(ui, architectureId, di, "ci-github-actions") + compileAffectingLibraries + quality,
-                            architecture = ArchitectureModelV1(
-                                mode = ArchitectureModeV1.PRESET,
-                                presetPatternId = architectureId,
-                            ),
-                            featureNames = listOf("home"),
-                        ),
-                        tempPrefix = "$ui-$architectureId-$di",
-                    )
-                }
-            }
+        compileCriticalSelections().forEachIndexed { index, selection ->
+            assembleExportedProject(service, selection, "critical-$index")
         }
-
-        listOf("ui-compose", "ui-xml").forEach { ui ->
-            listOf("di-hilt", "di-koin", "di-dagger2").forEach { di ->
-                assembleExportedProject(
-                    service = service,
-                    selection = selection(
-                        optionIds = listOf(ui, di, "ci-github-actions") + compileAffectingLibraries + quality,
-                        architecture = ArchitectureModelV1(
-                            mode = ArchitectureModeV1.CUSTOM,
-                            customComponentTypes = listOf(
-                                CustomComponentTypeV1(
-                                    id = "coordinator",
-                                    displayName = "Coordinator",
-                                    layer = "presentation",
-                                    fileNameTemplate = "\${FeatureClass}Coordinator.kt",
-                                    sourceTemplate = "package \${Package}.feature.\${FeaturePackage}.presentation\n\nclass \${FeatureClass}Coordinator",
-                                    allowedDependencyTypeIds = listOf("router"),
-                                ),
-                            ),
-                        ),
-                        featureNames = listOf("home"),
-                    ),
-                    tempPrefix = "$ui-custom-$di",
-                )
-            }
+        toggleOnlyCompileSelections().forEachIndexed { index, selection ->
+            assembleExportedProject(service, selection, "toggle-$index")
         }
     }
 
     private fun selection(
+        templateId: String = "android-app",
         optionIds: List<String>,
         architecture: ArchitectureModelV1,
         featureNames: List<String> = listOf("home", "catalog"),
     ): WizardSelectionV1 =
         WizardSelectionV1(
-            templateId = "android-app",
+            templateId = templateId,
             selectedOptionIds = optionIds,
             projectConfig = ProjectConfigV1(
                 projectName = "Demo App",
@@ -583,6 +652,27 @@ class ApplicationModuleTest {
                 qualityTools = optionIds.filter { it.startsWith("quality-") },
             ),
             architecture = architecture,
+        )
+
+    private fun presetArchitecture(architectureId: String): ArchitectureModelV1 =
+        ArchitectureModelV1(
+            mode = ArchitectureModeV1.PRESET,
+            presetPatternId = architectureId,
+        )
+
+    private fun customArchitecture(): ArchitectureModelV1 =
+        ArchitectureModelV1(
+            mode = ArchitectureModeV1.CUSTOM,
+            customComponentTypes = listOf(
+                CustomComponentTypeV1(
+                    id = "coordinator",
+                    displayName = "Coordinator",
+                    layer = "presentation",
+                    fileNameTemplate = "\${FeatureClass}Coordinator.kt",
+                    sourceTemplate = "package \${Package}.feature.\${FeaturePackage}.presentation\n\nclass \${FeatureClass}Coordinator",
+                    allowedDependencyTypeIds = listOf("router"),
+                ),
+            ),
         )
 
     private suspend fun resolve(
@@ -615,27 +705,28 @@ class ApplicationModuleTest {
         assertTrue(files.filterKeys { !it.endsWith(".jar") }.values.none { templateMarker.containsMatchIn(it.decodeToString()) })
     }
 
-    private fun allSupportedSelections(): List<WizardSelectionV1> {
-        val uiOptions = listOf("ui-compose", "ui-xml")
-        val presetArchitectures = listOf("arch-mvvm", "arch-mvi", "arch-mvp")
-        val diOptions = listOf("di-hilt", "di-koin", "di-dagger2")
-        val ciOptions = listOf("ci-github-actions", "ci-gitlab")
-        val libraryOptions = listOf("library-retrofit", "library-room", "library-coil", "library-timber")
-        val qualityOptions = listOf("quality-detekt", "quality-ktlint")
-
+    private fun structuralSelections(): List<WizardSelectionV1> {
+        val catalog = metadataCatalog()
+        val templates = templateIds(catalog)
+        val uiOptions = exclusiveGroupOptionIds(catalog, "ui-framework")
+        val architectureOptions = exclusiveGroupOptionIds(catalog, "architecture")
+        val diOptions = exclusiveGroupOptionIds(catalog, "di-stack")
+        val ciOptions = exclusiveGroupOptionIds(catalog, "ci-stack")
+        val qualityOptions = qualityOptionIds(catalog)
+        val primaryScenarios = primaryLibraryScenarios()
+        val toggleOnlyOptions = toggleOnlyLibraryOptionIds(catalog)
         val selections = mutableListOf<WizardSelectionV1>()
-        uiOptions.forEach { ui ->
-            presetArchitectures.forEach { architectureId ->
-                diOptions.forEach { di ->
-                    ciOptions.forEach { ci ->
-                        powerSet(libraryOptions).forEach { libraries ->
-                            powerSet(qualityOptions).forEach { quality ->
+
+        templates.forEach { templateId ->
+            uiOptions.forEach { ui ->
+                architectureOptions.forEach { architectureId ->
+                    diOptions.forEach { di ->
+                        ciOptions.forEach { ci ->
+                            primaryScenarios.forEach { libraries ->
                                 selections += selection(
-                                    optionIds = listOf(ui, architectureId, di, ci) + libraries + quality,
-                                    architecture = ArchitectureModelV1(
-                                        mode = ArchitectureModeV1.PRESET,
-                                        presetPatternId = architectureId,
-                                    ),
+                                    templateId = templateId,
+                                    optionIds = listOf(ui, architectureId, di, ci) + libraries + qualityOptions,
+                                    architecture = presetArchitecture(architectureId),
                                     featureNames = listOf("home"),
                                 )
                             }
@@ -643,33 +734,105 @@ class ApplicationModuleTest {
                     }
                 }
             }
-            diOptions.forEach { di ->
-                ciOptions.forEach { ci ->
-                    powerSet(libraryOptions).forEach { libraries ->
-                        powerSet(qualityOptions).forEach { quality ->
-                            selections += selection(
-                                optionIds = listOf(ui, di, ci) + libraries + quality,
-                                architecture = ArchitectureModelV1(
-                                    mode = ArchitectureModeV1.CUSTOM,
-                                    customComponentTypes = listOf(
-                                        CustomComponentTypeV1(
-                                            id = "coordinator",
-                                            displayName = "Coordinator",
-                                            layer = "presentation",
-                                            fileNameTemplate = "\${FeatureClass}Coordinator.kt",
-                                            sourceTemplate = "package \${Package}.feature.\${FeaturePackage}.presentation\n\nclass \${FeatureClass}Coordinator",
-                                            allowedDependencyTypeIds = listOf("router"),
-                                        ),
+
+            powerSet(toggleOnlyOptions).forEach { toggles ->
+                selections += selection(
+                    templateId = templateId,
+                    optionIds = listOf("ui-compose", "arch-mvvm", "di-hilt", "ci-github-actions") +
+                        baselinePrimaryLibraries() + qualityOptions + toggles,
+                    architecture = presetArchitecture("arch-mvvm"),
+                    featureNames = listOf("home"),
+                )
+            }
+
+            powerSet(qualityOptions).forEach { quality ->
+                selections += selection(
+                    templateId = templateId,
+                    optionIds = listOf("ui-compose", "arch-mvvm", "di-hilt", "ci-github-actions") +
+                        baselinePrimaryLibraries() + quality,
+                    architecture = presetArchitecture("arch-mvvm"),
+                    featureNames = listOf("home"),
+                )
+            }
+
+            uiOptions.forEach { ui ->
+                diOptions.forEach { di ->
+                    selections += selection(
+                        templateId = templateId,
+                        optionIds = listOf(ui, di, "ci-github-actions") + baselinePrimaryLibraries() + qualityOptions,
+                        architecture = customArchitecture(),
+                        featureNames = listOf("home"),
+                    )
+                }
+            }
+        }
+
+        return selections.distinctBy { json.encodeToString(WizardSelectionV1.serializer(), it) }
+    }
+
+    private fun compileCriticalSelections(): List<WizardSelectionV1> {
+        val catalog = metadataCatalog()
+        val templates = templateIds(catalog)
+        val uiOptions = exclusiveGroupOptionIds(catalog, "ui-framework")
+        val architectureOptions = exclusiveGroupOptionIds(catalog, "architecture")
+        val diOptions = exclusiveGroupOptionIds(catalog, "di-stack")
+        val qualityOptions = qualityOptionIds(catalog)
+
+        return buildList {
+            templates.forEach { templateId ->
+                uiOptions.forEach { ui ->
+                    architectureOptions.forEach { architectureId ->
+                        diOptions.forEach { di ->
+                            compilePrimaryLibraryScenarios().forEach { libraries ->
+                                add(
+                                    selection(
+                                        templateId = templateId,
+                                        optionIds = listOf(ui, architectureId, di, "ci-github-actions") + libraries + qualityOptions,
+                                        architecture = presetArchitecture(architectureId),
+                                        featureNames = listOf("home"),
                                     ),
-                                ),
-                                featureNames = listOf("home"),
-                            )
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-        return selections
+        }.distinctBy { json.encodeToString(WizardSelectionV1.serializer(), it) }
+    }
+
+    private fun toggleOnlyCompileSelections(): List<WizardSelectionV1> {
+        val catalog = metadataCatalog()
+        val templates = templateIds(catalog)
+        val uiOptions = exclusiveGroupOptionIds(catalog, "ui-framework")
+        val qualityOptions = qualityOptionIds(catalog)
+        val toggles = toggleOnlyLibraryOptionIds(catalog)
+
+        return buildList {
+            templates.forEach { templateId ->
+                uiOptions.forEach { ui ->
+                    toggles.forEach { toggle ->
+                        add(
+                            selection(
+                                templateId = templateId,
+                                optionIds = listOf(ui, "arch-mvvm", "di-hilt", "ci-github-actions") +
+                                    baselinePrimaryLibraries() + qualityOptions + toggle,
+                                architecture = presetArchitecture("arch-mvvm"),
+                                featureNames = listOf("home"),
+                            ),
+                        )
+                    }
+                    add(
+                        selection(
+                            templateId = templateId,
+                            optionIds = listOf(ui, "arch-mvvm", "di-hilt", "ci-github-actions") +
+                                baselinePrimaryLibraries() + qualityOptions + toggles,
+                            architecture = presetArchitecture("arch-mvvm"),
+                            featureNames = listOf("home"),
+                        ),
+                    )
+                }
+            }
+        }.distinctBy { json.encodeToString(WizardSelectionV1.serializer(), it) }
     }
 
     private fun assertSelectionSpecificExport(
@@ -680,10 +843,34 @@ class ApplicationModuleTest {
         val optionIds = selection.selectedOptionIds.toSet()
         val appBuild = files.getValue("app/build.gradle.kts").decodeToString()
         val rootBuild = files.getValue("build.gradle.kts").decodeToString()
+        val commonBuild = files.getValue("core/common/build.gradle.kts").decodeToString()
+        val uiBuild = files.getValue("core/ui/build.gradle.kts").decodeToString()
         val designSystemBuild = files.getValue("core/designsystem/build.gradle.kts").decodeToString()
-        val databaseBuild = files.getValue("core/database/build.gradle.kts").decodeToString()
-        val networkBuild = files.getValue("core/network/build.gradle.kts").decodeToString()
+        val databaseBuild = files["core/database/build.gradle.kts"]?.decodeToString().orEmpty()
+        val networkBuild = files["core/network/build.gradle.kts"]?.decodeToString().orEmpty()
+        val testingBuild = files["core/testing/build.gradle.kts"]?.decodeToString().orEmpty()
         val configuration = files.getValue(".wizard/configuration.json").decodeToString()
+        val featureRepositoryNames = selection.projectConfig.orEmptyFeatureNames().map { featureName ->
+            featureName
+                .trim()
+                .split(Regex("[^A-Za-z0-9]+"))
+                .filter(String::isNotBlank)
+                .joinToString(separator = "") { token ->
+                    token.lowercase().replaceFirstChar { char -> char.uppercase() }
+                } + "Repository"
+        }
+
+        if (selection.templateId == "android-app-lite" && optionIds.none { it in setOf("library-retrofit", "library-ktor-client", "library-moshi", "library-kotlinx-serialization", "library-chucker") }) {
+            assertTrue("core/network/build.gradle.kts" !in files, "$label lite template should not include core:network")
+        }
+        if (selection.templateId == "android-app-lite" && optionIds.none { it in setOf("library-room", "library-sqldelight") }) {
+            assertTrue("core/database/build.gradle.kts" !in files, "$label lite template should not include core:database")
+        }
+        if (selection.templateId == "android-app-scalable") {
+            assertTrue("core/analytics/build.gradle.kts" in files, "$label missing scalable analytics module")
+            assertTrue("core/observability/build.gradle.kts" in files, "$label missing scalable observability module")
+            assertTrue("core/sync/build.gradle.kts" in files, "$label missing scalable sync module")
+        }
 
         if ("ui-compose" in optionIds) {
             assertTrue(
@@ -708,14 +895,27 @@ class ApplicationModuleTest {
         if ("di-hilt" in optionIds) {
             assertTrue("alias(libs.plugins.hilt)" in appBuild, "$label missing hilt plugin")
             assertTrue("kapt(libs.hilt.compiler)" in appBuild, "$label missing hilt compiler")
+            val appModule = files.getValue("app/src/main/kotlin/com/example/demo/di/AppModule.kt").decodeToString()
+            featureRepositoryNames.forEach { repositoryName ->
+                assertTrue("${repositoryName}Impl" in appModule, "$label missing hilt repository binding for $repositoryName")
+            }
         }
         if ("di-koin" in optionIds) {
             assertTrue("implementation(libs.koin.android)" in appBuild, "$label missing koin dependency")
             assertTrue("startKoin" in files.getValue("app/src/main/kotlin/com/example/demo/GeneratedApplication.kt").decodeToString())
+            val koinModule = files.getValue("app/src/main/kotlin/com/example/demo/di/KoinModules.kt").decodeToString()
+            featureRepositoryNames.forEach { repositoryName ->
+                assertTrue("single<$repositoryName>" in koinModule, "$label missing koin repository binding for $repositoryName")
+            }
         }
         if ("di-dagger2" in optionIds) {
             assertTrue("kapt(libs.dagger.compiler)" in appBuild, "$label missing dagger compiler")
+            val appModule = files.getValue("app/src/main/kotlin/com/example/demo/di/AppModule.kt").decodeToString()
+            featureRepositoryNames.forEach { repositoryName ->
+                assertTrue("${repositoryName}Impl" in appModule, "$label missing dagger repository binding for $repositoryName")
+            }
         }
+        assertTrue("implementation(project(\":feature:home:data\"))" in appBuild, "$label missing home data app dependency")
         if ("library-room" in optionIds) {
             assertTrue("alias(libs.plugins.ksp)" in databaseBuild, "$label missing room ksp plugin")
             assertTrue("ksp(libs.room.compiler)" in databaseBuild, "$label missing room compiler")
@@ -730,6 +930,58 @@ class ApplicationModuleTest {
                 "core/network/src/main/kotlin/com/example/demo/core/network/ApiService.kt" in files,
                 "$label missing ApiService",
             )
+        }
+        if ("library-ktor-client" in optionIds) {
+            assertTrue("api(libs.ktor.client.okhttp)" in networkBuild, "$label missing ktor dependency")
+            assertTrue(
+                "core/network/src/main/kotlin/com/example/demo/core/network/KtorClientFactory.kt" in files,
+                "$label missing KtorClientFactory",
+            )
+        }
+        if ("library-moshi" in optionIds) {
+            assertTrue("implementation(libs.moshi)" in networkBuild, "$label missing moshi dependency")
+            assertTrue(
+                "core/network/src/main/kotlin/com/example/demo/core/network/MoshiFactory.kt" in files,
+                "$label missing MoshiFactory",
+            )
+        }
+        if ("library-kotlinx-serialization" in optionIds) {
+            assertTrue(
+                "core/network/src/main/kotlin/com/example/demo/core/network/NetworkJson.kt" in files,
+                "$label missing NetworkJson",
+            )
+        }
+        if ("library-sqldelight" in optionIds) {
+            assertTrue("api(libs.sqldelight.android.driver)" in databaseBuild, "$label missing sqldelight driver")
+            assertTrue(
+                "core/database/src/main/kotlin/com/example/demo/core/database/DatabaseDriverFactory.kt" in files,
+                "$label missing DatabaseDriverFactory",
+            )
+        }
+        if ("library-datastore" in optionIds) {
+            assertTrue("api(libs.androidx.datastore.preferences)" in commonBuild, "$label missing datastore dependency")
+            assertTrue(
+                "core/common/src/main/kotlin/com/example/demo/core/common/UserPreferencesStore.kt" in files,
+                "$label missing UserPreferencesStore",
+            )
+        }
+        if ("library-paging" in optionIds) {
+            assertTrue("paging" in uiBuild, "$label missing paging dependency")
+            assertTrue(
+                "core/ui/src/main/kotlin/com/example/demo/core/ui/PagingPlaceholders.kt" in files,
+                "$label missing PagingPlaceholders",
+            )
+        }
+        if ("library-workmanager" in optionIds) {
+            assertTrue("implementation(libs.androidx.work.runtime)" in appBuild, "$label missing workmanager dependency")
+            assertTrue(
+                "app/src/main/kotlin/com/example/demo/work/GeneratedSyncWorker.kt" in files,
+                "$label missing GeneratedSyncWorker",
+            )
+        }
+        if ("library-chucker" in optionIds) {
+            assertTrue("debugImplementation(libs.chucker.debug)" in appBuild, "$label missing chucker debug dependency")
+            assertTrue("releaseImplementation(libs.chucker.release)" in appBuild, "$label missing chucker release dependency")
         }
         if ("library-coil" in optionIds) {
             if ("ui-compose" in optionIds) {
@@ -753,6 +1005,27 @@ class ApplicationModuleTest {
             assertTrue("implementation(libs.timber)" in appBuild, "$label missing timber dependency")
             assertTrue("logging/DebugTree.kt" in files.keys.joinToString("\n"), "$label missing DebugTree")
         }
+        if ("library-leakcanary" in optionIds) {
+            assertTrue("debugImplementation(libs.leakcanary.android)" in appBuild, "$label missing leakcanary dependency")
+            assertTrue(
+                "app/src/debug/kotlin/com/example/demo/debug/LeakCanaryHooks.kt" in files,
+                "$label missing LeakCanaryHooks",
+            )
+        }
+        if ("library-mockk" in optionIds) {
+            assertTrue("implementation(libs.mockk.android)" in testingBuild, "$label missing mockk dependency")
+            assertTrue(
+                "core/testing/src/main/kotlin/com/example/demo/core/testing/MockkSupport.kt" in files,
+                "$label missing MockkSupport",
+            )
+        }
+        if ("library-turbine" in optionIds) {
+            assertTrue("implementation(libs.turbine)" in testingBuild, "$label missing turbine dependency")
+            assertTrue(
+                "core/testing/src/main/kotlin/com/example/demo/core/testing/TurbineSupport.kt" in files,
+                "$label missing TurbineSupport",
+            )
+        }
         if ("quality-detekt" in optionIds) {
             assertTrue("alias(libs.plugins.detekt)" in rootBuild, "$label missing detekt plugin")
             assertTrue("config/detekt/detekt.yml" in files, "$label missing detekt config")
@@ -773,8 +1046,71 @@ class ApplicationModuleTest {
                 "$label missing custom architecture component",
             )
         }
+        if ("arch-udf" in optionIds) {
+            assertTrue(files.keys.any { it.endsWith("Store.kt") }, "$label missing udf store")
+        }
+        if ("arch-viper-lite" in optionIds) {
+            assertTrue(files.keys.any { it.endsWith("Router.kt") }, "$label missing viper router")
+            assertTrue(files.keys.any { it.endsWith("Interactor.kt") }, "$label missing viper interactor")
+        }
         assertTrue("\"featureNames\": [" in configuration, "$label missing featureNames in configuration")
     }
+
+    private fun metadataCatalog(): ConfigurationCatalog =
+        LoadCatalogUseCase(localCatalogProvider())()
+
+    private fun templateIds(catalog: ConfigurationCatalog): List<String> =
+        catalog.templates.values
+            .filter { it.validation.compileAffecting }
+            .map { it.id }
+            .sorted()
+
+    private fun exclusiveGroupOptionIds(
+        catalog: ConfigurationCatalog,
+        group: String,
+    ): List<String> =
+        catalog.options.values
+            .filter { it.validation.exclusiveGroup == group }
+            .map { it.id }
+            .sorted()
+
+    private fun qualityOptionIds(catalog: ConfigurationCatalog): List<String> =
+        catalog.options.values
+            .filter { it.category == "quality" && it.validation.compileAffecting }
+            .map { it.id }
+            .sorted()
+
+    private fun toggleOnlyLibraryOptionIds(catalog: ConfigurationCatalog): List<String> =
+        catalog.options.values
+            .filter { it.type.name == "LIBRARY" && it.validation.toggleOnly }
+            .map { it.id }
+            .sorted()
+
+    private fun baselinePrimaryLibraries(): List<String> =
+        listOf("library-retrofit", "library-kotlinx-serialization", "library-room")
+
+    private fun primaryLibraryScenarios(): List<List<String>> =
+        listOf(
+            emptyList(),
+            listOf("library-retrofit"),
+            listOf("library-retrofit", "library-kotlinx-serialization"),
+            listOf("library-retrofit", "library-moshi"),
+            listOf("library-ktor-client"),
+            listOf("library-ktor-client", "library-kotlinx-serialization"),
+            listOf("library-room"),
+            listOf("library-sqldelight"),
+            listOf("library-retrofit", "library-kotlinx-serialization", "library-room"),
+            listOf("library-ktor-client", "library-kotlinx-serialization", "library-sqldelight"),
+        )
+
+    private fun compilePrimaryLibraryScenarios(): List<List<String>> =
+        listOf(
+            emptyList(),
+            listOf("library-retrofit", "library-kotlinx-serialization", "library-room"),
+            listOf("library-retrofit", "library-moshi", "library-sqldelight"),
+            listOf("library-ktor-client", "library-kotlinx-serialization", "library-room"),
+            listOf("library-ktor-client", "library-kotlinx-serialization", "library-sqldelight"),
+        )
 
     private fun <T> powerSet(values: List<T>): List<List<T>> {
         val result = mutableListOf<List<T>>()
@@ -797,13 +1133,17 @@ class ApplicationModuleTest {
     private fun generatedProjectFullSmokeEnabled(): Boolean =
         System.getenv("WIZARD_SMOKE_GENERATED_ANDROID_FULL") == "true"
 
-    private fun localWizardApiService(): WizardApiService =
-        WizardApiService(
-            MergedCatalogProvider(
-                localProvider = ClasspathCatalogProvider(localCatalogPaths),
-                remoteProvider = EmptyCatalogProvider,
-            ),
+    private fun ProjectConfigV1?.orEmptyFeatureNames(): List<String> =
+        this?.featureNames.orEmpty()
+
+    private fun localCatalogProvider(): MergedCatalogProvider =
+        MergedCatalogProvider(
+            localProvider = ClasspathCatalogProvider(localCatalogPaths),
+            remoteProvider = EmptyCatalogProvider,
         )
+
+    private fun localWizardApiService(): WizardApiService =
+        WizardApiService(localCatalogProvider())
 
     private fun assembleExportedProject(
         service: WizardApiService,

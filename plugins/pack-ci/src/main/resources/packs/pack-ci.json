@@ -28,6 +28,10 @@
         "supported": ["v4"],
         "range": null
       },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "ci-stack"
+      },
       "patches": [
         {
           "type": "ADD_TEMPLATE_DIRECTORY",
@@ -53,6 +57,10 @@
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "ci-stack"
       },
       "patches": [
         {

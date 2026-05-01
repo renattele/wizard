@@ -2,6 +2,6 @@ package ${Package}.feature.${FeaturePackage}.presentation
 
 import androidx.lifecycle.ViewModel
 
-class ${FeatureClass}Store : ViewModel() {
-    val state: ${FeatureClass}State = ${FeatureClass}State()
+class ${FeatureClass}${ArchitectureStoreSuffix} : ViewModel() {
+    val state: ${FeatureClass}${ArchitectureStateSuffix} = ${FeatureClass}${ArchitectureStateSuffix}()
 }

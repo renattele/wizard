@@ -9,4 +9,5 @@ android {
 dependencies {
     implementation(libs.junit4)
     implementation(libs.androidx.test.ext)
+    // __CORE_TESTING_DEPENDENCY_MARKER__
 }

@@ -355,6 +355,7 @@ class PrepareGenerationUseCase(
         return PreparedGeneration(
             plan = GenerationPlan(
                 templateId = templateId,
+                templatePatchBatches = emptyList(),
                 resolvedOptions = verified.resolution.resolvedOptions,
                 applyOrder = verified.resolution.applyOrder,
                 strictMode = strictMode,

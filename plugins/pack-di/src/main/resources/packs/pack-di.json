@@ -28,6 +28,10 @@
         "supported": ["2.57.1"],
         "range": "2.x"
       },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "di-stack"
+      },
       "patches": [
         {
           "type": "ADD_TEMPLATE_DIRECTORY",
@@ -82,6 +86,10 @@
         "supported": ["4.1.0"],
         "range": "4.x"
       },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "di-stack"
+      },
       "patches": [
         {
           "type": "ADD_TEMPLATE_DIRECTORY",
@@ -128,6 +136,10 @@
         "recommended": "2.57.1",
         "supported": ["2.57.1"],
         "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "di-stack"
       },
       "patches": [
         {

@@ -1,3 +1,3 @@
 package ${Package}.feature.${FeaturePackage}.presentation
 
-sealed interface ${FeatureClass}UiEvent
+sealed interface ${FeatureClass}${ArchitectureEventSuffix}

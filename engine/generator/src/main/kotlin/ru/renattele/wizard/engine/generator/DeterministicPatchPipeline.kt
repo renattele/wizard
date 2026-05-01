@@ -21,6 +21,17 @@ class DeterministicPatchPipeline : PatchPipeline {
         val skipped = mutableListOf<SkippedPatchV1>()
         val optionById = request.plan.resolvedOptions.associateBy { it.id }
 
+        request.plan.templatePatchBatches.forEach { batch ->
+            applyPatches(
+                sourceId = batch.sourceId,
+                patches = batch.patches,
+                resourceLoader = request.resourceLoader,
+                files = files,
+                appliedFiles = appliedFiles,
+                skipped = skipped,
+            )
+        }
+
         request.plan.applyOrder.forEach { optionId ->
             val option = optionById[optionId] ?: return@forEach
             applyPatches(

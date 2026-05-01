@@ -30,6 +30,8 @@ data class TemplateManifest(
     val version: String,
     val tags: List<String> = emptyList(),
     val baseOptionIds: List<String> = emptyList(),
+    val patches: List<PatchOperationManifest> = emptyList(),
+    val validation: ValidationMetadataManifest = ValidationMetadataManifest(),
 )
 
 @Serializable
@@ -43,8 +45,16 @@ data class OptionManifest(
     val dependency: OptionDependencyContract = OptionDependencyContract(),
     val version: OptionVersionManifest = OptionVersionManifest(),
     val artifact: RemoteArtifactDescriptor? = null,
+    val validation: ValidationMetadataManifest = ValidationMetadataManifest(),
     val parameters: List<OptionParameterManifest> = emptyList(),
     val patches: List<PatchOperationManifest> = emptyList(),
+)
+
+@Serializable
+data class ValidationMetadataManifest(
+    val compileAffecting: Boolean? = null,
+    val exclusiveGroup: String? = null,
+    val toggleOnly: Boolean = false,
 )
 
 @Serializable

@@ -28,6 +28,10 @@
         "supported": ["1.9.3"],
         "range": "1.x"
       },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "ui-framework"
+      },
       "patches": [
         {
           "type": "ADD_TEMPLATE_DIRECTORY",
@@ -102,6 +106,10 @@
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "ui-framework"
       },
       "patches": [
         {

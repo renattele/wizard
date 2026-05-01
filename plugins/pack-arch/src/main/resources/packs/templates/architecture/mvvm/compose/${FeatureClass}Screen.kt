@@ -5,8 +5,8 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun ${FeatureClass}Screen(
-    state: ${FeatureClass}UiState,
-    onEvent: (${FeatureClass}UiEvent) -> Unit = {},
+    state: ${FeatureClass}${ArchitectureStateSuffix},
+    onEvent: (${FeatureClass}${ArchitectureEventSuffix}) -> Unit = {},
 ) {
     onEvent
     Text(text = state.title)

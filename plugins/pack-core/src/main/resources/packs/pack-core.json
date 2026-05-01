@@ -13,10 +13,65 @@
     {
       "id": "android-app",
       "displayName": "Android App",
-      "description": "Android-only multi-module starter",
+      "description": "Balanced Android multi-module starter with shared infra modules ready out of the box.",
       "version": "2.0.0",
-      "tags": ["android", "gradle", "wizard"],
-      "baseOptionIds": ["base-kotlin", "build-gradle-kts", "target-android"]
+      "tags": ["android", "gradle", "balanced", "wizard"],
+      "baseOptionIds": ["base-kotlin", "build-gradle-kts", "target-android"],
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/android-base",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ],
+      "validation": {
+        "compileAffecting": true
+      }
+    },
+    {
+      "id": "android-app-lite",
+      "displayName": "Android App Lite",
+      "description": "Lean Android starter that only materializes infra modules when the selected stack needs them.",
+      "version": "2.0.0",
+      "tags": ["android", "gradle", "lite", "wizard"],
+      "baseOptionIds": ["base-kotlin", "build-gradle-kts", "target-android"],
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/android-lite",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ],
+      "validation": {
+        "compileAffecting": true
+      }
+    },
+    {
+      "id": "android-app-scalable",
+      "displayName": "Android App Scalable",
+      "description": "Full Android starter with extra analytics, observability, and sync scaffolding for larger teams.",
+      "version": "2.0.0",
+      "tags": ["android", "gradle", "scalable", "wizard"],
+      "baseOptionIds": ["base-kotlin", "build-gradle-kts", "target-android"],
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/android-base",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/android-scalable",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ],
+      "validation": {
+        "compileAffecting": true
+      }
     }
   ],
   "options": [

@@ -9,6 +9,5 @@ android {
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":feature:${FeaturePackage}:domain"))
-    implementation(project(":core:network"))
-    implementation(project(":core:database"))
+${FeatureDataInfraDependencies}
 }

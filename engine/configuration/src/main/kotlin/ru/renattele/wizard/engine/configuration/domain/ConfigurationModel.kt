@@ -24,6 +24,8 @@ data class TemplateSpec(
     val version: String,
     val tags: List<String>,
     val baseOptionIds: List<String>,
+    val patches: List<PatchSpec>,
+    val validation: ValidationSpec,
     val sourcePackId: String,
 )
 
@@ -36,11 +38,18 @@ data class OptionSpec(
     val defaultEnabled: Boolean,
     val dependency: DependencyRule,
     val versionPolicy: VersionPolicy,
+    val validation: ValidationSpec,
     val parameters: List<OptionParameterSpec> = emptyList(),
     val patches: List<PatchSpec>,
     val sourcePackId: String,
     val artifactCoordinates: String?,
     val artifactChecksum: String?,
+)
+
+data class ValidationSpec(
+    val compileAffecting: Boolean,
+    val exclusiveGroup: String?,
+    val toggleOnly: Boolean,
 )
 
 data class OptionParameterSpec(
@@ -194,6 +203,7 @@ data class VerifiedConfiguration(
 
 data class GenerationPlan(
     val templateId: String,
+    val templatePatchBatches: List<AdditionalPatchBatch> = emptyList(),
     val resolvedOptions: List<ResolvedOption>,
     val applyOrder: List<String>,
     val strictMode: Boolean,

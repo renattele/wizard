@@ -17,6 +17,7 @@ import ru.renattele.wizard.engine.configuration.domain.Problem
 import ru.renattele.wizard.engine.configuration.domain.ProblemCode
 import ru.renattele.wizard.engine.configuration.domain.ProblemSeverity
 import ru.renattele.wizard.engine.configuration.domain.TemplateSpec
+import ru.renattele.wizard.engine.configuration.domain.ValidationSpec
 import ru.renattele.wizard.engine.configuration.domain.VersionPolicy
 import ru.renattele.wizard.engine.configuration.domain.VersionRangeMatcher
 import ru.renattele.wizard.manifest.ConflictStrategy
@@ -51,6 +52,26 @@ class ConfigurationModelFactory {
                     version = template.version,
                     tags = template.tags.sorted(),
                     baseOptionIds = template.baseOptionIds.distinct().sorted(),
+                    patches = template.patches.map { patch ->
+                        PatchSpec(
+                            operation = patch.type.toDomainOperation(),
+                            targetPath = patch.targetPath,
+                            content = patch.content,
+                            resourcePath = patch.resourcePath,
+                            find = patch.find,
+                            replace = patch.replace,
+                            activation = PatchActivation(
+                                requiresOptionIds = patch.activation.requiresOptionIds.distinct().sorted(),
+                                requiresCapabilities = patch.activation.requiresCapabilities.distinct().sorted(),
+                            ),
+                            conflictStrategy = patch.conflictStrategy.toDomainStrategy(),
+                        )
+                    },
+                    validation = ValidationSpec(
+                        compileAffecting = template.validation.compileAffecting ?: true,
+                        exclusiveGroup = template.validation.exclusiveGroup,
+                        toggleOnly = template.validation.toggleOnly,
+                    ),
                     sourcePackId = descriptor.id,
                 )
             }
@@ -82,6 +103,11 @@ class ConfigurationModelFactory {
                         recommended = option.version.recommended,
                         supported = option.version.supported.distinct().sorted(),
                         range = option.version.range,
+                    ),
+                    validation = ValidationSpec(
+                        compileAffecting = option.validation.compileAffecting ?: false,
+                        exclusiveGroup = option.validation.exclusiveGroup,
+                        toggleOnly = option.validation.toggleOnly,
                     ),
                     parameters = option.parameters.map { parameter ->
                         OptionParameterSpec(

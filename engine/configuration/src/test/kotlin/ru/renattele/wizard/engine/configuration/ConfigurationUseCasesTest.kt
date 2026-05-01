@@ -12,11 +12,15 @@ import ru.renattele.wizard.engine.configuration.application.LoadCatalogUseCase
 import ru.renattele.wizard.engine.configuration.application.ResolveConfigurationUseCase
 import ru.renattele.wizard.engine.configuration.application.VerifyLockUseCase
 import ru.renattele.wizard.engine.configuration.domain.ProblemCode
+import ru.renattele.wizard.manifest.ConflictStrategy
 import ru.renattele.wizard.manifest.OptionDependencyContract
 import ru.renattele.wizard.manifest.OptionManifest
 import ru.renattele.wizard.manifest.OptionVersionManifest
+import ru.renattele.wizard.manifest.PatchOperationManifest
+import ru.renattele.wizard.manifest.PatchOperationType
 import ru.renattele.wizard.manifest.PluginPackManifest
 import ru.renattele.wizard.manifest.TemplateManifest
+import ru.renattele.wizard.manifest.ValidationMetadataManifest
 
 class ConfigurationUseCasesTest {
     @Test
@@ -67,6 +71,18 @@ class ConfigurationUseCasesTest {
         }
     }
 
+    @Test
+    fun `catalog keeps template patches and validation metadata`() {
+        val catalog = LoadCatalogUseCase(staticProvider(validCatalog()))()
+        val template = requireNotNull(catalog.templates["android-app"])
+        val option = requireNotNull(catalog.options["ui-compose"])
+
+        assertTrue(template.patches.any { it.resourcePath == "packs/templates/android-base" })
+        assertTrue(template.validation.compileAffecting)
+        assertTrue(option.validation.compileAffecting)
+        assertTrue(option.validation.exclusiveGroup == "ui-framework")
+    }
+
     private fun staticProvider(bundle: CatalogBundle): CatalogProvider = object : CatalogProvider {
         override fun loadCatalog(request: CatalogRequest): CatalogBundle = bundle
     }
@@ -82,6 +98,15 @@ class ConfigurationUseCasesTest {
                     description = "App template",
                     version = "1.0.0",
                     baseOptionIds = listOf("base-kotlin"),
+                    patches = listOf(
+                        PatchOperationManifest(
+                            type = PatchOperationType.ADD_TEMPLATE_DIRECTORY,
+                            targetPath = "",
+                            resourcePath = "packs/templates/android-base",
+                            conflictStrategy = ConflictStrategy.MERGE_WITH_RULE,
+                        ),
+                    ),
+                    validation = ValidationMetadataManifest(compileAffecting = true),
                 ),
             ),
             options = listOf(
@@ -101,6 +126,10 @@ class ConfigurationUseCasesTest {
                     description = "UI",
                     dependency = OptionDependencyContract(requiresOptionIds = listOf("base-kotlin")),
                     version = OptionVersionManifest(recommended = "1.0.0"),
+                    validation = ValidationMetadataManifest(
+                        compileAffecting = true,
+                        exclusiveGroup = "ui-framework",
+                    ),
                 ),
             ),
         )

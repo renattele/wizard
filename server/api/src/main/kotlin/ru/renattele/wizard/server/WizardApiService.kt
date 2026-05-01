@@ -41,6 +41,7 @@ import ru.renattele.wizard.engine.configuration.application.PrepareGenerationUse
 import ru.renattele.wizard.engine.configuration.application.ResolveConfigurationUseCase
 import ru.renattele.wizard.engine.configuration.application.VerifyLockUseCase
 import ru.renattele.wizard.engine.configuration.domain.AdditionalPatchBatch
+import ru.renattele.wizard.engine.configuration.domain.ConfigurationCatalog
 import ru.renattele.wizard.engine.configuration.domain.LockState
 import ru.renattele.wizard.engine.configuration.domain.LockedOption
 import ru.renattele.wizard.engine.configuration.domain.PatchConflictStrategy
@@ -66,6 +67,15 @@ class WizardApiService(
         val packageName: String,
         val className: String,
         val route: String,
+    )
+
+    private data class TemplateModules(
+        val includeNetwork: Boolean,
+        val includeDatabase: Boolean,
+        val includeTesting: Boolean,
+        val includeAnalytics: Boolean,
+        val includeObservability: Boolean,
+        val includeSync: Boolean,
     )
 
     private val loadCatalog = LoadCatalogUseCase(catalogProvider)
@@ -224,9 +234,11 @@ class WizardApiService(
             strictMode = strictMode,
             providedLock = lockfile?.toDomainLockState(),
         )
+        val catalog = loadCatalog()
 
         return prepared.copy(
             plan = prepared.plan.copy(
+                templatePatchBatches = buildTemplatePatchBatches(catalog, normalizedSelection),
                 resolvedOptions = applyOptionCustomizations(
                     resolvedOptions = prepared.plan.resolvedOptions,
                     customization = buildGenerationCustomization(normalizedSelection),
@@ -275,6 +287,75 @@ class WizardApiService(
             optionParameters = selection.optionParameters,
         )
 
+    private fun buildTemplatePatchBatches(
+        catalog: ConfigurationCatalog,
+        selection: WizardSelectionV1,
+    ): List<AdditionalPatchBatch> {
+        val template = catalog.templates[selection.templateId]
+            ?: throw IllegalArgumentException("Unknown template '${selection.templateId}'")
+        val templateVars = templateVariables(selection)
+        val batches = mutableListOf<AdditionalPatchBatch>()
+
+        if (template.patches.isNotEmpty()) {
+            batches += AdditionalPatchBatch(
+                sourceId = "template:${template.id}",
+                patches = template.patches.map { patch -> patch.renderWith(templateVars) },
+            )
+        }
+
+        if (selection.templateId == "android-app-lite") {
+            val modules = templateModules(selection)
+            if (modules.includeNetwork) {
+                batches += sharedModuleBatch(
+                    sourceId = "template:${template.id}:core-network",
+                    targetPath = "core/network",
+                    resourcePath = "packs/templates/android-base/core/network",
+                    templateVariables = templateVars,
+                )
+            }
+            if (modules.includeDatabase) {
+                batches += sharedModuleBatch(
+                    sourceId = "template:${template.id}:core-database",
+                    targetPath = "core/database",
+                    resourcePath = "packs/templates/android-base/core/database",
+                    templateVariables = templateVars,
+                )
+            }
+            if (modules.includeTesting) {
+                batches += sharedModuleBatch(
+                    sourceId = "template:${template.id}:core-testing",
+                    targetPath = "core/testing",
+                    resourcePath = "packs/templates/android-base/core/testing",
+                    templateVariables = templateVars,
+                )
+            }
+        }
+
+        return batches
+    }
+
+    private fun sharedModuleBatch(
+        sourceId: String,
+        targetPath: String,
+        resourcePath: String,
+        templateVariables: Map<String, String>,
+    ): AdditionalPatchBatch =
+        AdditionalPatchBatch(
+            sourceId = sourceId,
+            patches = listOf(
+                PatchSpec(
+                    operation = PatchOperation.ADD_TEMPLATE_DIRECTORY,
+                    targetPath = targetPath,
+                    content = null,
+                    resourcePath = resourcePath,
+                    find = null,
+                    replace = null,
+                    conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                    templateVariables = templateVariables,
+                ),
+            ),
+        )
+
     private fun buildAdditionalPatchBatches(selection: WizardSelectionV1): List<AdditionalPatchBatch> {
         val templateVars = templateVariables(selection)
         val batches = mutableListOf<AdditionalPatchBatch>()
@@ -284,9 +365,7 @@ class WizardApiService(
         val architectureTemplateId = selectedArchitecture?.removePrefix("arch-")
 
         features.forEach { feature ->
-            val featureVars = templateVars + featureVariables(feature) + mapOf(
-                "ArchitectureViewModelSuffix" to architectureViewModelSuffix(selection),
-            )
+            val featureVars = templateVars + featureVariables(feature)
             val featureRoot = "feature/${feature.packageName}"
             val presentationRoot = "$featureRoot/presentation"
 
@@ -456,6 +535,7 @@ class WizardApiService(
         val features = featureSpecs(selection)
         val startFeature = features.first()
         val selectedArchitecture = selectedArchitectureId(selection)
+        val templateModules = templateModules(selection)
         val vars = linkedMapOf<String, String>()
         vars += selection.contextVars.toSortedMap()
         vars["TemplateId"] = selection.templateId
@@ -469,7 +549,23 @@ class WizardApiService(
         vars["ReleaseTarget"] = projectConfig?.releaseTarget ?: "git-release-assets"
         vars["ReleaseArtifactTypesCsv"] = projectConfig?.releaseArtifactTypes?.joinToString(", ").orEmpty()
         vars["UiFramework"] = selectedUiMode(selection)
+        vars["TemplateFlavor"] = when (selection.templateId) {
+            "android-app-lite" -> "lite"
+            "android-app-scalable" -> "scalable"
+            else -> "balanced"
+        }
         vars["ArchitectureViewModelSuffix"] = architectureViewModelSuffix(selection)
+        vars["ArchitectureStoreSuffix"] = architectureStoreSuffix(selection)
+        vars["ArchitecturePresenterSuffix"] = architecturePresenterSuffix(selection)
+        vars["ArchitectureContractSuffix"] = architectureContractSuffix(selection)
+        vars["ArchitectureRouterSuffix"] = architectureRouterSuffix(selection)
+        vars["ArchitectureInteractorSuffix"] = architectureInteractorSuffix(selection)
+        vars["ArchitectureStateSuffix"] = architectureStateSuffix(selection)
+        vars["ArchitectureEventSuffix"] = architectureEventSuffix(selection)
+        vars["ArchitectureEffectSuffix"] = architectureEffectSuffix(selection)
+        vars["ArchitectureIntentSuffix"] = architectureIntentSuffix(selection)
+        vars["ArchitectureUseCaseSuffix"] = architectureUseCaseSuffix(selection)
+        vars["ArchitectureNavigatorOwner"] = architectureNavigatorOwner(selection)
         vars["DesignSystemPrefix"] = projectConfig?.designSystemPrefix?.takeIf(String::isNotBlank) ?: "T"
         vars["PrimaryColor"] = projectConfig?.primaryColor?.takeIf(String::isNotBlank) ?: "#6750A4"
         vars["SecondaryColor"] = projectConfig?.secondaryColor?.takeIf(String::isNotBlank) ?: "#625B71"
@@ -486,11 +582,56 @@ class WizardApiService(
                 "include(\":feature:${feature.packageName}:data\")",
             ).joinToString(separator = "\n")
         }
+        vars["SharedModuleIncludes"] = buildList {
+            if (templateModules.includeNetwork) add("include(\":core:network\")")
+            if (templateModules.includeDatabase) add("include(\":core:database\")")
+            if (templateModules.includeTesting) add("include(\":core:testing\")")
+            if (templateModules.includeAnalytics) add("include(\":core:analytics\")")
+            if (templateModules.includeObservability) add("include(\":core:observability\")")
+            if (templateModules.includeSync) add("include(\":core:sync\")")
+        }.joinToString(separator = "\n")
         vars["FeatureReadmeList"] = features.joinToString(separator = "\n") { feature ->
             "- `feature:${feature.packageName}:presentation`, `feature:${feature.packageName}:domain`, `feature:${feature.packageName}:data`"
         }
+        vars["SharedModuleReadmeList"] = buildList {
+            if (templateModules.includeNetwork) add("- `core:network`")
+            if (templateModules.includeDatabase) add("- `core:database`")
+            if (templateModules.includeTesting) add("- `core:testing`")
+            if (templateModules.includeAnalytics) add("- `core:analytics`")
+            if (templateModules.includeObservability) add("- `core:observability`")
+            if (templateModules.includeSync) add("- `core:sync`")
+        }.joinToString(separator = "\n")
         vars["AppFeaturePresentationDependencies"] = features.joinToString(separator = "\n") { feature ->
             "    implementation(project(\":feature:${feature.packageName}:presentation\"))"
+        }
+        vars["AppFeatureDataDependencies"] = features.joinToString(separator = "\n") { feature ->
+            "    implementation(project(\":feature:${feature.packageName}:data\"))"
+        }
+        vars["AppSharedModuleDependencies"] = buildList {
+            if (templateModules.includeAnalytics) add("    implementation(project(\":core:analytics\"))")
+            if (templateModules.includeObservability) add("    implementation(project(\":core:observability\"))")
+            if (templateModules.includeSync) add("    implementation(project(\":core:sync\"))")
+        }.joinToString(separator = "\n")
+        vars["FeatureDataInfraDependencies"] = buildList {
+            if (templateModules.includeNetwork) add("    implementation(project(\":core:network\"))")
+            if (templateModules.includeDatabase) add("    implementation(project(\":core:database\"))")
+        }.joinToString(separator = "\n")
+        vars["FeatureRepositoryImports"] = features.joinToString(separator = "\n") { feature ->
+            "import $packageId.feature.${feature.packageName}.data.${feature.className}RepositoryImpl\n" +
+                "import $packageId.feature.${feature.packageName}.domain.${feature.className}Repository"
+        }
+        vars["FeatureHiltProviderMethods"] = features.joinToString(separator = "\n\n") { feature ->
+            "    @Provides\n" +
+                "    @Singleton\n" +
+                "    fun provide${feature.className}Repository(): ${feature.className}Repository = ${feature.className}RepositoryImpl()"
+        }
+        vars["FeatureDaggerProviderMethods"] = features.joinToString(separator = "\n\n") { feature ->
+            "    @Provides\n" +
+                "    @Singleton\n" +
+                "    fun provide${feature.className}Repository(): ${feature.className}Repository = ${feature.className}RepositoryImpl()"
+        }
+        vars["FeatureKoinBindings"] = features.joinToString(separator = "\n") { feature ->
+            "        single<${feature.className}Repository> { ${feature.className}RepositoryImpl() }"
         }
         vars["StartFeatureRoute"] = startFeature.route
         vars["StartFeaturePackage"] = startFeature.packageName
@@ -500,13 +641,13 @@ class WizardApiService(
         }
         vars["FeatureComposableImports"] = features
             .map { feature ->
-                composeNavigationImports(packageId, feature, selectedArchitecture, architectureViewModelSuffix(selection))
+                composeNavigationImports(packageId, feature, selectedArchitecture, selection)
             }
             .filter(String::isNotBlank)
             .distinct()
             .joinToString(separator = "\n")
         vars["FeatureComposableDestinations"] = features.joinToString(separator = "\n") { feature ->
-            composeDestinationBlock(feature, selectedArchitecture, architectureViewModelSuffix(selection))
+            composeDestinationBlock(feature, selectedArchitecture, selection)
         }
         if ("Feature" !in vars) {
             vars["Feature"] = startFeature.className
@@ -579,7 +720,43 @@ class WizardApiService(
     }
 
     private fun selectedArchitectureId(selection: WizardSelectionV1): String? =
-        selection.selectedOptionIds.firstOrNull { it in setOf("arch-mvvm", "arch-mvi", "arch-mvp") }
+        selection.selectedOptionIds.firstOrNull { it in setOf("arch-mvvm", "arch-mvi", "arch-mvp", "arch-udf", "arch-viper-lite") }
+
+    private fun templateModules(selection: WizardSelectionV1): TemplateModules {
+        val selected = selection.selectedOptionIds.toSet()
+        val needsNetwork = selected.any { it in setOf("library-retrofit", "library-ktor-client", "library-moshi", "library-kotlinx-serialization", "library-chucker") }
+        val needsDatabase = selected.any { it in setOf("library-room", "library-sqldelight") }
+        val needsTesting = selected.any { it in setOf("library-mockk", "library-turbine") }
+
+        return when (selection.templateId) {
+            "android-app-lite" -> TemplateModules(
+                includeNetwork = needsNetwork,
+                includeDatabase = needsDatabase,
+                includeTesting = needsTesting,
+                includeAnalytics = false,
+                includeObservability = false,
+                includeSync = false,
+            )
+
+            "android-app-scalable" -> TemplateModules(
+                includeNetwork = true,
+                includeDatabase = true,
+                includeTesting = true,
+                includeAnalytics = true,
+                includeObservability = true,
+                includeSync = true,
+            )
+
+            else -> TemplateModules(
+                includeNetwork = true,
+                includeDatabase = true,
+                includeTesting = true,
+                includeAnalytics = false,
+                includeObservability = false,
+                includeSync = false,
+            )
+        }
+    }
 
     private fun featureSpecs(selection: WizardSelectionV1): List<FeatureSpec> =
         selection.projectConfig?.featureNames
@@ -610,44 +787,97 @@ class WizardApiService(
         "FeatureName" to feature.rawName,
     )
 
-    private fun architectureViewModelSuffix(selection: WizardSelectionV1): String =
-        selection.optionParameters["arch-mvvm"]
-            ?.get("viewModelSuffix")
+    private fun architectureParameterValue(
+        selection: WizardSelectionV1,
+        parameterId: String,
+        defaultValue: String,
+    ): String =
+        selectedArchitectureId(selection)
+            ?.let { architectureId -> selection.optionParameters[architectureId]?.get(parameterId) }
             ?.takeIf(String::isNotBlank)
-            ?: "ViewModel"
+            ?: defaultValue
+
+    private fun architectureViewModelSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "viewModelSuffix", "ViewModel")
+
+    private fun architectureStoreSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "storeSuffix", "Store")
+
+    private fun architecturePresenterSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "presenterSuffix", "Presenter")
+
+    private fun architectureContractSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "contractSuffix", "Contract")
+
+    private fun architectureRouterSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "routerSuffix", "Router")
+
+    private fun architectureInteractorSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "interactorSuffix", "Interactor")
+
+    private fun architectureStateSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "stateSuffix", "State")
+
+    private fun architectureEventSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "eventSuffix", "Event")
+
+    private fun architectureEffectSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "effectSuffix", "Effect")
+
+    private fun architectureIntentSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "intentSuffix", "Intent")
+
+    private fun architectureUseCaseSuffix(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "useCaseSuffix", "UseCase")
+
+    private fun architectureNavigatorOwner(selection: WizardSelectionV1): String =
+        architectureParameterValue(selection, "navigatorOwner", "screen")
 
     private fun composeNavigationImports(
         packageId: String,
         feature: FeatureSpec,
         architectureId: String?,
-        viewModelSuffix: String,
+        selection: WizardSelectionV1,
     ): String = when (architectureId) {
         "arch-mvvm" ->
-            "import $packageId.feature.${feature.packageName}.presentation.${feature.className}$viewModelSuffix\n" +
+            "import $packageId.feature.${feature.packageName}.presentation.${feature.className}${architectureViewModelSuffix(selection)}\n" +
+                "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen"
+        "arch-udf" ->
+            "import $packageId.feature.${feature.packageName}.presentation.${feature.className}${architectureStoreSuffix(selection)}\n" +
                 "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen"
         "arch-mvi" ->
             "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen\n" +
-                "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Store"
+                "import $packageId.feature.${feature.packageName}.presentation.${feature.className}${architectureStoreSuffix(selection)}"
         "arch-mvp" -> "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen"
+        "arch-viper-lite" -> "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen"
         else -> "import androidx.compose.material3.Text"
     }
 
     private fun composeDestinationBlock(
         feature: FeatureSpec,
         architectureId: String?,
-        viewModelSuffix: String,
+        selection: WizardSelectionV1,
     ): String = when (architectureId) {
         "arch-mvvm" ->
             "        composable(route = \"${feature.route}\") {\n" +
-                "            val viewModel = ${feature.className}$viewModelSuffix()\n" +
+                "            val viewModel = ${feature.className}${architectureViewModelSuffix(selection)}()\n" +
                 "            ${feature.className}Screen(state = viewModel.state)\n" +
+                "        }"
+        "arch-udf" ->
+            "        composable(route = \"${feature.route}\") {\n" +
+                "            val store = ${feature.className}${architectureStoreSuffix(selection)}()\n" +
+                "            ${feature.className}Screen(state = store.state, dispatch = store::dispatch)\n" +
                 "        }"
         "arch-mvi" ->
             "        composable(route = \"${feature.route}\") {\n" +
-                "            val store = ${feature.className}Store()\n" +
+                "            val store = ${feature.className}${architectureStoreSuffix(selection)}()\n" +
                 "            ${feature.className}Screen(state = store.state)\n" +
                 "        }"
         "arch-mvp" ->
+            "        composable(route = \"${feature.route}\") {\n" +
+                "            ${feature.className}Screen()\n" +
+                "        }"
+        "arch-viper-lite" ->
             "        composable(route = \"${feature.route}\") {\n" +
                 "            ${feature.className}Screen()\n" +
                 "        }"
@@ -656,6 +886,16 @@ class WizardApiService(
                 "            Text(text = \"${feature.className}\")\n" +
                 "        }"
     }
+
+    private fun PatchSpec.renderWith(variables: Map<String, String>): PatchSpec =
+        copy(
+            targetPath = renderTemplate(targetPath, variables),
+            content = content?.let { renderTemplate(it, variables) },
+            resourcePath = resourcePath?.let { renderTemplate(it, variables) },
+            find = find?.let { renderTemplate(it, variables) },
+            replace = replace?.let { renderTemplate(it, variables) },
+            templateVariables = variables,
+        )
 
     private fun toComposeColor(color: String?, fallback: String): String {
         val normalized = toXmlColor(color, fallback).removePrefix("#")

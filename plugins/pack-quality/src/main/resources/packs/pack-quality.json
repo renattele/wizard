@@ -27,6 +27,9 @@
         "supported": ["1.23.8"],
         "range": "1.x"
       },
+      "validation": {
+        "compileAffecting": true
+      },
       "patches": [
         {
           "type": "ADD_TEMPLATE_DIRECTORY",
@@ -66,6 +69,9 @@
         "recommended": "12.2.0",
         "supported": ["12.2.0"],
         "range": "12.x"
+      },
+      "validation": {
+        "compileAffecting": true
       },
       "patches": [
         {

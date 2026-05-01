@@ -27,15 +27,7 @@
         "recommended": "35",
         "supported": ["34", "35"],
         "range": null
-      },
-      "patches": [
-        {
-          "type": "ADD_TEMPLATE_DIRECTORY",
-          "targetPath": "",
-          "resourcePath": "packs/templates/android-base",
-          "conflictStrategy": "MERGE_WITH_RULE"
-        }
-      ]
+      }
     }
   ]
 }

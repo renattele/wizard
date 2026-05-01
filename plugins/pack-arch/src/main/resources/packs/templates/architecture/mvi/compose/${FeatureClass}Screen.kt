@@ -5,8 +5,8 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun ${FeatureClass}Screen(
-    state: ${FeatureClass}State,
-    dispatch: (${FeatureClass}Intent) -> Unit = {},
+    state: ${FeatureClass}${ArchitectureStateSuffix},
+    dispatch: (${FeatureClass}${ArchitectureIntentSuffix}) -> Unit = {},
 ) {
     dispatch
     Text(text = state.title)

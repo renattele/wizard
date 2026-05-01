@@ -15,28 +15,29 @@
       "type": "ARCHITECTURE",
       "category": "architecture",
       "displayName": "MVVM",
-      "description": "Presentation, state, and view model boilerplate",
+      "description": "State + event driven view model presentation with configurable naming conventions.",
       "defaultEnabled": true,
       "dependency": {
         "requiresOptionIds": [],
         "requiresCapabilities": ["ui:framework"],
         "providesCapabilities": ["arch:mvvm"],
-        "conflictsHard": ["arch-mvi", "arch-mvp"]
+        "conflictsHard": ["arch-mvi", "arch-mvp", "arch-udf", "arch-viper-lite"]
       },
       "version": {
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
       },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "architecture"
+      },
       "parameters": [
-        {
-          "id": "viewModelSuffix",
-          "displayName": "ViewModel suffix",
-          "description": "Suffix for generated view models.",
-          "type": "STRING",
-          "required": true,
-          "defaultValue": "ViewModel"
-        }
+        { "id": "viewModelSuffix", "displayName": "ViewModel suffix", "description": "Suffix for generated view models.", "type": "STRING", "required": true, "defaultValue": "ViewModel" },
+        { "id": "stateSuffix", "displayName": "State suffix", "description": "Suffix for generated UI state models.", "type": "STRING", "required": true, "defaultValue": "UiState" },
+        { "id": "eventSuffix", "displayName": "Event suffix", "description": "Suffix for generated UI event contracts.", "type": "STRING", "required": true, "defaultValue": "UiEvent" },
+        { "id": "navigatorOwner", "displayName": "Navigator owner", "description": "Who should own navigation decisions in this preset.", "type": "ENUM", "defaultValue": "viewModel", "allowedValues": [{ "value": "viewModel", "displayName": "ViewModel" }, { "value": "screen", "displayName": "Screen" }] },
+        { "id": "useCaseSuffix", "displayName": "Use case suffix", "description": "Suffix used by generated domain orchestration examples.", "type": "STRING", "required": true, "defaultValue": "UseCase" }
       ]
     },
     {
@@ -44,36 +45,118 @@
       "type": "ARCHITECTURE",
       "category": "architecture",
       "displayName": "MVI",
-      "description": "Intent, state, reducer-style boilerplate",
+      "description": "Intent/state reducer-style presentation with configurable store naming.",
       "dependency": {
         "requiresOptionIds": [],
         "requiresCapabilities": ["ui:framework"],
         "providesCapabilities": ["arch:mvi"],
-        "conflictsHard": ["arch-mvvm", "arch-mvp"]
+        "conflictsHard": ["arch-mvvm", "arch-mvp", "arch-udf", "arch-viper-lite"]
       },
       "version": {
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
-      }
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "architecture"
+      },
+      "parameters": [
+        { "id": "storeSuffix", "displayName": "Store suffix", "description": "Suffix for generated stores.", "type": "STRING", "required": true, "defaultValue": "Store" },
+        { "id": "stateSuffix", "displayName": "State suffix", "description": "Suffix for generated state models.", "type": "STRING", "required": true, "defaultValue": "State" },
+        { "id": "intentSuffix", "displayName": "Intent suffix", "description": "Suffix for generated intent contracts.", "type": "STRING", "required": true, "defaultValue": "Intent" },
+        { "id": "effectSuffix", "displayName": "Effect suffix", "description": "Suffix for generated one-off effects.", "type": "STRING", "required": true, "defaultValue": "Effect" },
+        { "id": "navigatorOwner", "displayName": "Navigator owner", "description": "Who should own navigation decisions in this preset.", "type": "ENUM", "defaultValue": "store", "allowedValues": [{ "value": "store", "displayName": "Store" }, { "value": "screen", "displayName": "Screen" }] },
+        { "id": "useCaseSuffix", "displayName": "Use case suffix", "description": "Suffix used by generated domain orchestration examples.", "type": "STRING", "required": true, "defaultValue": "UseCase" }
+      ]
     },
     {
       "id": "arch-mvp",
       "type": "ARCHITECTURE",
       "category": "architecture",
       "displayName": "MVP",
-      "description": "Presenter and contract boilerplate",
+      "description": "Presenter-driven contracts with configurable presenter and contract suffixes.",
       "dependency": {
         "requiresOptionIds": [],
         "requiresCapabilities": ["ui:framework"],
         "providesCapabilities": ["arch:mvp"],
-        "conflictsHard": ["arch-mvvm", "arch-mvi"]
+        "conflictsHard": ["arch-mvvm", "arch-mvi", "arch-udf", "arch-viper-lite"]
       },
       "version": {
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
-      }
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "architecture"
+      },
+      "parameters": [
+        { "id": "presenterSuffix", "displayName": "Presenter suffix", "description": "Suffix for presenter interfaces.", "type": "STRING", "required": true, "defaultValue": "Presenter" },
+        { "id": "contractSuffix", "displayName": "Contract suffix", "description": "Suffix for contract types.", "type": "STRING", "required": true, "defaultValue": "Contract" },
+        { "id": "navigatorOwner", "displayName": "Navigator owner", "description": "Who should own navigation decisions in this preset.", "type": "ENUM", "defaultValue": "presenter", "allowedValues": [{ "value": "presenter", "displayName": "Presenter" }, { "value": "screen", "displayName": "Screen" }] },
+        { "id": "useCaseSuffix", "displayName": "Use case suffix", "description": "Suffix used by generated domain orchestration examples.", "type": "STRING", "required": true, "defaultValue": "UseCase" }
+      ]
+    },
+    {
+      "id": "arch-udf",
+      "type": "ARCHITECTURE",
+      "category": "architecture",
+      "displayName": "UDF",
+      "description": "Reducer/effect/store-oriented unidirectional data flow with configurable event and effect naming.",
+      "dependency": {
+        "requiresOptionIds": [],
+        "requiresCapabilities": ["ui:framework"],
+        "providesCapabilities": ["arch:udf"],
+        "conflictsHard": ["arch-mvvm", "arch-mvi", "arch-mvp", "arch-viper-lite"]
+      },
+      "version": {
+        "recommended": "1.0.0",
+        "supported": ["1.0.0"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "architecture"
+      },
+      "parameters": [
+        { "id": "storeSuffix", "displayName": "Store suffix", "description": "Suffix for generated stores.", "type": "STRING", "required": true, "defaultValue": "Store" },
+        { "id": "stateSuffix", "displayName": "State suffix", "description": "Suffix for generated state models.", "type": "STRING", "required": true, "defaultValue": "State" },
+        { "id": "eventSuffix", "displayName": "Event suffix", "description": "Suffix for generated event contracts.", "type": "STRING", "required": true, "defaultValue": "Event" },
+        { "id": "effectSuffix", "displayName": "Effect suffix", "description": "Suffix for generated one-off effects.", "type": "STRING", "required": true, "defaultValue": "Effect" },
+        { "id": "navigatorOwner", "displayName": "Navigator owner", "description": "Who should own navigation decisions in this preset.", "type": "ENUM", "defaultValue": "store", "allowedValues": [{ "value": "store", "displayName": "Store" }, { "value": "screen", "displayName": "Screen" }] },
+        { "id": "useCaseSuffix", "displayName": "Use case suffix", "description": "Suffix used by generated domain orchestration examples.", "type": "STRING", "required": true, "defaultValue": "UseCase" }
+      ]
+    },
+    {
+      "id": "arch-viper-lite",
+      "type": "ARCHITECTURE",
+      "category": "architecture",
+      "displayName": "VIPER Lite",
+      "description": "View/interactor/presenter/router style separation without heavy ceremony.",
+      "dependency": {
+        "requiresOptionIds": [],
+        "requiresCapabilities": ["ui:framework"],
+        "providesCapabilities": ["arch:viper-lite"],
+        "conflictsHard": ["arch-mvvm", "arch-mvi", "arch-mvp", "arch-udf"]
+      },
+      "version": {
+        "recommended": "1.0.0",
+        "supported": ["1.0.0"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "architecture"
+      },
+      "parameters": [
+        { "id": "presenterSuffix", "displayName": "Presenter suffix", "description": "Suffix for generated presenters.", "type": "STRING", "required": true, "defaultValue": "Presenter" },
+        { "id": "contractSuffix", "displayName": "Contract suffix", "description": "Suffix for generated view contracts.", "type": "STRING", "required": true, "defaultValue": "Contract" },
+        { "id": "routerSuffix", "displayName": "Router suffix", "description": "Suffix for generated routers.", "type": "STRING", "required": true, "defaultValue": "Router" },
+        { "id": "interactorSuffix", "displayName": "Interactor suffix", "description": "Suffix for generated interactors.", "type": "STRING", "required": true, "defaultValue": "Interactor" },
+        { "id": "navigatorOwner", "displayName": "Navigator owner", "description": "Who should own navigation decisions in this preset.", "type": "ENUM", "defaultValue": "router", "allowedValues": [{ "value": "router", "displayName": "Router" }, { "value": "screen", "displayName": "Screen" }] },
+        { "id": "useCaseSuffix", "displayName": "Use case suffix", "description": "Suffix used by generated domain orchestration examples.", "type": "STRING", "required": true, "defaultValue": "UseCase" }
+      ]
     }
   ]
 }

@@ -15,17 +15,21 @@
       "type": "LIBRARY",
       "category": "network",
       "displayName": "Retrofit + OkHttp",
-      "description": "HTTP client stack in core:network",
+      "description": "Classic HTTP client stack in `core:network` with Retrofit service interfaces and OkHttp logging.",
       "dependency": {
         "requiresOptionIds": ["target-android"],
         "requiresCapabilities": ["target:android"],
-        "providesCapabilities": ["library:retrofit", "network:http-client"],
-        "conflictsHard": []
+        "providesCapabilities": ["library:retrofit", "network:http-client", "network:retrofit"],
+        "conflictsHard": ["library-ktor-client"]
       },
       "version": {
         "recommended": "2.11.0",
         "supported": ["2.11.0"],
         "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "network-stack"
       },
       "patches": [
         {
@@ -38,7 +42,131 @@
           "type": "REPLACE_IN_FILE",
           "targetPath": "core/network/build.gradle.kts",
           "find": "// __CORE_NETWORK_DEPENDENCY_MARKER__",
-          "replace": "    api(libs.retrofit)\n    api(libs.okhttp)\n    implementation(libs.okhttp.logging)\n    implementation(libs.kotlinx.serialization.json)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.retrofit)\n    api(libs.okhttp)\n    implementation(libs.okhttp.logging)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-ktor-client",
+      "type": "LIBRARY",
+      "category": "network",
+      "displayName": "Ktor Client",
+      "description": "Modern Ktor HTTP client stack with OkHttp engine and content negotiation in `core:network`.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:ktor-client", "network:http-client", "network:ktor"],
+        "conflictsHard": ["library-retrofit"]
+      },
+      "version": {
+        "recommended": "2.3.13",
+        "supported": ["2.3.13"],
+        "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "network-stack"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/ktor-client",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/network/build.gradle.kts",
+          "find": "// __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.ktor.client.okhttp)\n    implementation(libs.ktor.client.content.negotiation)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-moshi",
+      "type": "LIBRARY",
+      "category": "serialization",
+      "displayName": "Moshi",
+      "description": "JSON serialization helpers and Retrofit Moshi converter support.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:moshi", "serialization:moshi"],
+        "conflictsHard": ["library-kotlinx-serialization"]
+      },
+      "version": {
+        "recommended": "1.15.1",
+        "supported": ["1.15.1"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "serialization-stack"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/moshi",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/network/build.gradle.kts",
+          "find": "// __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.moshi)\n    implementation(libs.moshi.kotlin)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/network/build.gradle.kts",
+          "find": "// __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.retrofit.converter.moshi)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "activation": {
+            "requiresOptionIds": ["library-retrofit"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-kotlinx-serialization",
+      "type": "LIBRARY",
+      "category": "serialization",
+      "displayName": "kotlinx.serialization",
+      "description": "Shared JSON helpers and Ktor serialization wiring built around kotlinx.serialization.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:kotlinx-serialization", "serialization:kotlinx"],
+        "conflictsHard": ["library-moshi"]
+      },
+      "version": {
+        "recommended": "1.8.1",
+        "supported": ["1.8.1"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "serialization-stack"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/kotlinx-serialization",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/network/build.gradle.kts",
+          "find": "// __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.ktor.serialization.kotlinx.json)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "activation": {
+            "requiresOptionIds": ["library-ktor-client"]
+          },
           "conflictStrategy": "MERGE_WITH_RULE"
         }
       ]
@@ -48,17 +176,21 @@
       "type": "LIBRARY",
       "category": "database",
       "displayName": "Room",
-      "description": "Room persistence layer in core:database",
+      "description": "Room persistence layer in `core:database` with sample DAO and database setup.",
       "dependency": {
         "requiresOptionIds": ["target-android"],
         "requiresCapabilities": ["target:android"],
         "providesCapabilities": ["library:room", "database:room"],
-        "conflictsHard": []
+        "conflictsHard": ["library-sqldelight"]
       },
       "version": {
         "recommended": "2.8.1",
         "supported": ["2.8.1"],
         "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "persistence-stack"
       },
       "patches": [
         {
@@ -84,11 +216,200 @@
       ]
     },
     {
+      "id": "library-sqldelight",
+      "type": "LIBRARY",
+      "category": "database",
+      "displayName": "SQLDelight",
+      "description": "SQLDelight driver and coroutine extensions in `core:database` with placeholder driver factory wiring.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:sqldelight", "database:sqldelight"],
+        "conflictsHard": ["library-room"]
+      },
+      "version": {
+        "recommended": "2.0.2",
+        "supported": ["2.0.2"],
+        "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "exclusiveGroup": "persistence-stack"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/sqldelight",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/database/build.gradle.kts",
+          "find": "// __CORE_DATABASE_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.sqldelight.android.driver)\n    implementation(libs.sqldelight.coroutines)\n    // __CORE_DATABASE_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-datastore",
+      "type": "LIBRARY",
+      "category": "storage",
+      "displayName": "DataStore",
+      "description": "Preferences DataStore helper scaffolding in `core:common`.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:datastore", "storage:preferences"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "1.1.1",
+        "supported": ["1.1.1"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/datastore",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/common/build.gradle.kts",
+          "find": "// __CORE_COMMON_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.androidx.datastore.preferences)\n    // __CORE_COMMON_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-paging",
+      "type": "LIBRARY",
+      "category": "behavior",
+      "displayName": "Paging 3",
+      "description": "Paging helpers for list-heavy screens with Compose or classic view dependencies added automatically.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:paging"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "3.3.2",
+        "supported": ["3.3.2"],
+        "range": "3.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/paging",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/ui/build.gradle.kts",
+          "find": "// __CORE_UI_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.androidx.paging.runtime)\n    // __CORE_UI_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/ui/build.gradle.kts",
+          "find": "// __CORE_UI_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.androidx.paging.compose)\n    // __CORE_UI_DEPENDENCY_MARKER__",
+          "activation": {
+            "requiresOptionIds": ["ui-compose"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-workmanager",
+      "type": "LIBRARY",
+      "category": "behavior",
+      "displayName": "WorkManager",
+      "description": "Background job scaffolding with a generated sync worker and app dependency wiring.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:workmanager", "behavior:background-work"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "2.10.0",
+        "supported": ["2.10.0"],
+        "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/workmanager",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.androidx.work.runtime)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-chucker",
+      "type": "LIBRARY",
+      "category": "observability",
+      "displayName": "Chucker",
+      "description": "Network inspection dependencies for debug builds plus no-op release artifact wiring.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:chucker"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "4.1.0",
+        "supported": ["4.1.0"],
+        "range": "4.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    debugImplementation(libs.chucker.debug)\n    releaseImplementation(libs.chucker.release)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
       "id": "library-coil",
       "type": "LIBRARY",
       "category": "image",
       "displayName": "Coil",
-      "description": "Image loading helpers",
+      "description": "Image loading helpers for Compose or XML design system components.",
       "dependency": {
         "requiresOptionIds": ["target-android"],
         "requiresCapabilities": ["target:android"],
@@ -99,6 +420,10 @@
         "recommended": "3.3.0",
         "supported": ["3.3.0"],
         "range": "3.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
       },
       "patches": [
         {
@@ -146,7 +471,7 @@
       "type": "LIBRARY",
       "category": "logging",
       "displayName": "Timber",
-      "description": "Application logging setup",
+      "description": "Application logging setup with generated `DebugTree` wiring.",
       "dependency": {
         "requiresOptionIds": ["target-android"],
         "requiresCapabilities": ["target:android"],
@@ -157,6 +482,10 @@
         "recommended": "5.0.1",
         "supported": ["5.0.1"],
         "range": "5.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
       },
       "patches": [
         {
@@ -184,6 +513,117 @@
           "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
           "find": "// __APPLICATION_INIT__",
           "replace": "        Timber.plant(DebugTree())\n        // __APPLICATION_INIT__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-leakcanary",
+      "type": "LIBRARY",
+      "category": "observability",
+      "displayName": "LeakCanary",
+      "description": "Debug memory leak detection dependency for generated apps.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:leakcanary"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "2.14",
+        "supported": ["2.14"],
+        "range": "2.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/leakcanary",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    debugImplementation(libs.leakcanary.android)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-mockk",
+      "type": "LIBRARY",
+      "category": "testing",
+      "displayName": "MockK",
+      "description": "MockK test doubles in the generated `core:testing` module.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:mockk"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "1.13.12",
+        "supported": ["1.13.12"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/mockk",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/testing/build.gradle.kts",
+          "find": "// __CORE_TESTING_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.mockk.android)\n    // __CORE_TESTING_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-turbine",
+      "type": "LIBRARY",
+      "category": "testing",
+      "displayName": "Turbine",
+      "description": "Flow testing helpers in the generated `core:testing` module.",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:turbine"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "1.1.0",
+        "supported": ["1.1.0"],
+        "range": "1.x"
+      },
+      "validation": {
+        "compileAffecting": true,
+        "toggleOnly": true
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/turbine",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/testing/build.gradle.kts",
+          "find": "// __CORE_TESTING_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.turbine)\n    // __CORE_TESTING_DEPENDENCY_MARKER__",
           "conflictStrategy": "MERGE_WITH_RULE"
         }
       ]
