@@ -26,6 +26,7 @@ class DeterministicPatchPipeline : PatchPipeline {
             applyPatches(
                 sourceId = optionId,
                 patches = option.patches,
+                resourceLoader = request.resourceLoader,
                 files = files,
                 appliedFiles = appliedFiles,
                 skipped = skipped,
@@ -36,11 +37,17 @@ class DeterministicPatchPipeline : PatchPipeline {
             applyPatches(
                 sourceId = batch.sourceId,
                 patches = batch.patches,
+                resourceLoader = request.resourceLoader,
                 files = files,
                 appliedFiles = appliedFiles,
                 skipped = skipped,
             )
         }
+
+        files.removeTemplateMarkers()
+
+        val textFiles = files.snapshot()
+        val binaryFiles = files.binarySnapshot()
 
         val report = GenerationReportV1(
             appliedOptionIds = request.plan.applyOrder,
@@ -49,13 +56,14 @@ class DeterministicPatchPipeline : PatchPipeline {
         )
 
         return GenerationResult(
-            files = files.snapshot(),
+            files = textFiles,
             generationReport = report,
             artifact = request.exportFormat?.let { format ->
                 ArchiveBuilder().build(
                     templateId = request.plan.templateId,
                     format = format,
-                    files = files.snapshot(),
+                    files = textFiles,
+                    binaryFiles = binaryFiles,
                 )
             },
         )
@@ -64,6 +72,7 @@ class DeterministicPatchPipeline : PatchPipeline {
     private fun applyPatches(
         sourceId: String,
         patches: List<ru.renattele.wizard.engine.configuration.domain.PatchSpec>,
+        resourceLoader: TemplateResourceLoader,
         files: VirtualFileTree,
         appliedFiles: MutableSet<String>,
         skipped: MutableList<SkippedPatchV1>,
@@ -78,6 +87,50 @@ class DeterministicPatchPipeline : PatchPipeline {
                     appliedFiles = appliedFiles,
                     skipped = skipped,
                 )
+
+                PatchOperation.ADD_TEMPLATE_FILE -> files.addFile(
+                    optionId = sourceId,
+                    targetPath = patch.targetPath,
+                    content = renderTemplate(resourceLoader.readText(requireNotNull(patch.resourcePath)), patch.templateVariables),
+                    strategy = patch.conflictStrategy,
+                    appliedFiles = appliedFiles,
+                    skipped = skipped,
+                )
+
+                PatchOperation.ADD_TEMPLATE_DIRECTORY -> {
+                    resourceLoader.readDirectory(requireNotNull(patch.resourcePath))
+                        .toSortedMap()
+                        .forEach { (relativePath, rawContent) ->
+                            val renderedRelativePath = renderTemplate(relativePath, patch.templateVariables)
+                            val normalizedPath = listOf(patch.targetPath.trimEnd('/'), renderedRelativePath.trimStart('/'))
+                                .filter(String::isNotBlank)
+                                .joinToString("/")
+                            files.addFile(
+                                optionId = sourceId,
+                                targetPath = normalizedPath,
+                                content = renderTemplate(rawContent, patch.templateVariables),
+                                strategy = patch.conflictStrategy,
+                                appliedFiles = appliedFiles,
+                                skipped = skipped,
+                            )
+                        }
+                    resourceLoader.readBinaryDirectory(requireNotNull(patch.resourcePath))
+                        .toSortedMap()
+                        .forEach { (relativePath, rawContent) ->
+                            val renderedRelativePath = renderTemplate(relativePath, patch.templateVariables)
+                            val normalizedPath = listOf(patch.targetPath.trimEnd('/'), renderedRelativePath.trimStart('/'))
+                                .filter(String::isNotBlank)
+                                .joinToString("/")
+                            files.addBinaryFile(
+                                optionId = sourceId,
+                                targetPath = normalizedPath,
+                                content = rawContent,
+                                strategy = patch.conflictStrategy,
+                                appliedFiles = appliedFiles,
+                                skipped = skipped,
+                            )
+                        }
+                }
 
                 PatchOperation.APPEND_FILE -> files.appendFile(
                     optionId = sourceId,
@@ -108,12 +161,34 @@ class DeterministicPatchPipeline : PatchPipeline {
             }
         }
     }
+
+    private fun renderTemplate(
+        template: String,
+        variables: Map<String, String>,
+    ): String {
+        var rendered = template
+        variables.toSortedMap().forEach { (key, value) ->
+            rendered = rendered.replace("\${$key}", value)
+        }
+        return rendered
+    }
 }
 
 private class VirtualFileTree(initialFiles: Map<String, String>) {
+    private val templateMarkerLine = Regex("""(?m)^.*__[A-Z0-9_]+__.*(?:\r?\n|$)""")
     private val files = initialFiles.toMutableMap()
+    private val binaryFiles = linkedMapOf<String, ByteArray>()
 
     fun snapshot(): Map<String, String> = files.toSortedMap()
+    fun binarySnapshot(): Map<String, ByteArray> = binaryFiles.toSortedMap()
+
+    fun removeTemplateMarkers() {
+        files.replaceAll { _, content ->
+            content.replace(templateMarkerLine, "")
+                .replace(Regex("""\n{3,}"""), "\n\n")
+                .trimEnd() + "\n"
+        }
+    }
 
     fun addFile(
         optionId: String,
@@ -134,6 +209,41 @@ private class VirtualFileTree(initialFiles: Map<String, String>) {
             strategy == PatchConflictStrategy.FAIL -> throw IllegalStateException("Patch conflict on '$targetPath'")
             !existing.contains(content) -> {
                 files[targetPath] = existing + content
+                appliedFiles += targetPath
+            }
+
+            else -> Unit
+        }
+    }
+
+    fun addBinaryFile(
+        optionId: String,
+        targetPath: String,
+        content: ByteArray,
+        strategy: PatchConflictStrategy,
+        appliedFiles: MutableSet<String>,
+        skipped: MutableList<SkippedPatchV1>,
+    ) {
+        val existingBinary = binaryFiles[targetPath]
+        val existingText = files[targetPath]
+        when {
+            existingText != null -> when (strategy) {
+                PatchConflictStrategy.FAIL -> throw IllegalStateException("Patch conflict on '$targetPath'")
+                PatchConflictStrategy.SKIP, PatchConflictStrategy.MERGE_WITH_RULE ->
+                    skipped += SkippedPatchV1(optionId, targetPath, "text file already exists")
+            }
+
+            existingBinary == null -> {
+                binaryFiles[targetPath] = content
+                appliedFiles += targetPath
+            }
+
+            strategy == PatchConflictStrategy.FAIL -> throw IllegalStateException("Patch conflict on '$targetPath'")
+            strategy == PatchConflictStrategy.SKIP ->
+                skipped += SkippedPatchV1(optionId, targetPath, "binary file already exists")
+
+            !existingBinary.contentEquals(content) -> {
+                binaryFiles[targetPath] = content
                 appliedFiles += targetPath
             }
 
@@ -257,10 +367,11 @@ private class ArchiveBuilder {
         templateId: String,
         format: ExportFormatV1,
         files: Map<String, String>,
+        binaryFiles: Map<String, ByteArray>,
     ): GeneratedArtifactV1 {
         val payload = when (format) {
-            ExportFormatV1.ZIP -> buildZip(files)
-            ExportFormatV1.TAR_GZ -> buildTarGz(files)
+            ExportFormatV1.ZIP -> buildZip(files, binaryFiles)
+            ExportFormatV1.TAR_GZ -> buildTarGz(files, binaryFiles)
         }
 
         return GeneratedArtifactV1(
@@ -271,7 +382,10 @@ private class ArchiveBuilder {
         )
     }
 
-    private fun buildZip(files: Map<String, String>): ByteArray {
+    private fun buildZip(
+        files: Map<String, String>,
+        binaryFiles: Map<String, ByteArray>,
+    ): ByteArray {
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->
             files.toSortedMap().forEach { (path, content) ->
@@ -280,17 +394,33 @@ private class ArchiveBuilder {
                 zip.write(content.toByteArray(StandardCharsets.UTF_8))
                 zip.closeEntry()
             }
+            binaryFiles.toSortedMap().forEach { (path, content) ->
+                val entry = ZipEntry(path)
+                zip.putNextEntry(entry)
+                zip.write(content)
+                zip.closeEntry()
+            }
         }
         return output.toByteArray()
     }
 
-    private fun buildTarGz(files: Map<String, String>): ByteArray {
+    private fun buildTarGz(
+        files: Map<String, String>,
+        binaryFiles: Map<String, ByteArray>,
+    ): ByteArray {
         val tarBytes = ByteArrayOutputStream()
         files.toSortedMap().forEach { (path, content) ->
             writeTarEntry(
                 output = tarBytes,
                 path = path,
                 bytes = content.toByteArray(StandardCharsets.UTF_8),
+            )
+        }
+        binaryFiles.toSortedMap().forEach { (path, content) ->
+            writeTarEntry(
+                output = tarBytes,
+                path = path,
+                bytes = content,
             )
         }
         tarBytes.write(ByteArray(1024))

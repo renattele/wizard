@@ -1,0 +1,170 @@
+{
+  "id": "pack-di",
+  "version": "2.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "di-hilt",
+      "type": "LIBRARY",
+      "category": "di",
+      "displayName": "Hilt",
+      "description": "Dagger Hilt dependency injection",
+      "defaultEnabled": true,
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["di:hilt", "di:container"],
+        "conflictsHard": ["di-koin", "di-dagger2"]
+      },
+      "version": {
+        "recommended": "2.57.1",
+        "supported": ["2.57.1"],
+        "range": "2.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/di/hilt",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_PLUGIN_MARKER__",
+          "replace": "    alias(libs.plugins.hilt)\n    alias(libs.plugins.kotlinKapt)\n    // __APP_PLUGIN_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.hilt.android)\n    kapt(libs.hilt.compiler)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_IMPORTS__",
+          "replace": "import dagger.hilt.android.HiltAndroidApp\n// __APPLICATION_IMPORTS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_ANNOTATIONS__",
+          "replace": "@HiltAndroidApp\n// __APPLICATION_ANNOTATIONS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "di-koin",
+      "type": "LIBRARY",
+      "category": "di",
+      "displayName": "Koin",
+      "description": "Koin dependency injection",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["di:koin", "di:container"],
+        "conflictsHard": ["di-hilt", "di-dagger2"]
+      },
+      "version": {
+        "recommended": "4.1.0",
+        "supported": ["4.1.0"],
+        "range": "4.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/di/koin",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.koin.android)\n    implementation(libs.koin.compose)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_IMPORTS__",
+          "replace": "import ${Package}.di.appModules\nimport org.koin.android.ext.koin.androidContext\nimport org.koin.core.context.startKoin\n// __APPLICATION_IMPORTS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_INIT__",
+          "replace": "        startKoin {\n            androidContext(this@GeneratedApplication)\n            modules(appModules)\n        }\n        // __APPLICATION_INIT__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "di-dagger2",
+      "type": "LIBRARY",
+      "category": "di",
+      "displayName": "Dagger 2",
+      "description": "Classic Dagger component setup",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["di:dagger2", "di:container"],
+        "conflictsHard": ["di-hilt", "di-koin"]
+      },
+      "version": {
+        "recommended": "2.57.1",
+        "supported": ["2.57.1"],
+        "range": "2.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/di/dagger",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_PLUGIN_MARKER__",
+          "replace": "    alias(libs.plugins.kotlinKapt)\n    // __APP_PLUGIN_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.dagger)\n    kapt(libs.dagger.compiler)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_IMPORTS__",
+          "replace": "import ${Package}.di.DaggerAppComponent\n// __APPLICATION_IMPORTS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_INIT__",
+          "replace": "        DaggerAppComponent.factory().create(this)\n        // __APPLICATION_INIT__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    }
+  ]
+}

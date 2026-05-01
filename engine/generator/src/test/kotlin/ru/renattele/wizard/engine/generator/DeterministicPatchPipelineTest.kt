@@ -3,10 +3,10 @@ package ru.renattele.wizard.engine.generator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 import ru.renattele.wizard.contracts.v1.ExportFormatV1
 import ru.renattele.wizard.contracts.v1.OptionTypeV1
 import ru.renattele.wizard.engine.configuration.domain.AdditionalPatchBatch
-import ru.renattele.wizard.engine.configuration.domain.DependencyRule
 import ru.renattele.wizard.engine.configuration.domain.GenerationPlan
 import ru.renattele.wizard.engine.configuration.domain.LockState
 import ru.renattele.wizard.engine.configuration.domain.LockedOption
@@ -14,7 +14,6 @@ import ru.renattele.wizard.engine.configuration.domain.PatchConflictStrategy
 import ru.renattele.wizard.engine.configuration.domain.PatchOperation
 import ru.renattele.wizard.engine.configuration.domain.PatchSpec
 import ru.renattele.wizard.engine.configuration.domain.ResolvedOption
-import kotlin.test.assertTrue
 
 class DeterministicPatchPipelineTest {
     private val pipeline = DeterministicPatchPipeline()
@@ -86,9 +85,111 @@ class DeterministicPatchPipelineTest {
             ),
         )
 
-        assertEquals("{\"projectName\":\"Demo\"}", result.files.getValue(".wizard/configuration.json"))
+        assertEquals("{\"projectName\":\"Demo\"}\n", result.files.getValue(".wizard/configuration.json"))
         assertTrue(result.files.getValue("feature/catalog/Coordinator.kt").contains("Coordinator"))
         assertTrue(result.files.getValue("README.md").contains("Custom patch"))
+    }
+
+    @Test
+    fun `pipeline renders template files and directories from resource loader`() {
+        val plan = testPlan().copy(
+            additionalPatchBatches = listOf(
+                AdditionalPatchBatch(
+                    sourceId = "template-file",
+                    patches = listOf(
+                        PatchSpec(
+                            operation = PatchOperation.ADD_TEMPLATE_FILE,
+                            targetPath = "README.md",
+                            content = null,
+                            resourcePath = "templates/readme.md",
+                            find = null,
+                            replace = null,
+                            conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                            templateVariables = mapOf("ProjectName" to "Demo"),
+                        ),
+                    ),
+                ),
+                AdditionalPatchBatch(
+                    sourceId = "template-dir",
+                    patches = listOf(
+                        PatchSpec(
+                            operation = PatchOperation.ADD_TEMPLATE_DIRECTORY,
+                            targetPath = "feature/home/presentation",
+                            content = null,
+                            resourcePath = "templates/feature",
+                            find = null,
+                            replace = null,
+                            conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                            templateVariables = mapOf(
+                                "PackagePath" to "com/example/demo",
+                                "FeatureClass" to "Home",
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = pipeline.generate(
+            GenerationRequest(
+                plan = plan,
+                resourceLoader = StubTemplateResourceLoader(
+                    files = mapOf("templates/readme.md" to "# \${ProjectName}\n"),
+                    directories = mapOf(
+                        "templates/feature" to mapOf(
+                            "src/main/kotlin/\${PackagePath}/feature/\${FeatureClass}Screen.kt" to "class \${FeatureClass}Screen\n",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("Compose enabled\n# Demo\n", result.files.getValue("README.md"))
+        assertEquals(
+            "class HomeScreen\n",
+            result.files.getValue("feature/home/presentation/src/main/kotlin/com/example/demo/feature/HomeScreen.kt"),
+        )
+    }
+
+    @Test
+    fun `pipeline removes unresolved template markers from generated files`() {
+        val result = pipeline.generate(
+            GenerationRequest(
+                plan = testPlan().copy(
+                    additionalPatchBatches = listOf(
+                        AdditionalPatchBatch(
+                            sourceId = "markers",
+                            patches = listOf(
+                                PatchSpec(
+                                    operation = PatchOperation.ADD_FILE,
+                                    targetPath = "build.gradle.kts",
+                                    content = """
+                                        plugins {
+                                            id("demo")
+                                            // __PLUGIN_MARKER__
+                                        }
+
+                                        // __CONFIG_MARKER__
+                                    """.trimIndent(),
+                                    find = null,
+                                    replace = null,
+                                    conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            """
+            plugins {
+                id("demo")
+            }
+            """.trimIndent() + "\n",
+            result.files.getValue("build.gradle.kts"),
+        )
     }
 
     private fun testPlan(): GenerationPlan =
@@ -136,4 +237,13 @@ class DeterministicPatchPipelineTest {
             ),
             problems = emptyList(),
         )
+}
+
+private class StubTemplateResourceLoader(
+    private val files: Map<String, String> = emptyMap(),
+    private val directories: Map<String, Map<String, String>> = emptyMap(),
+) : TemplateResourceLoader {
+    override fun readText(path: String): String = files.getValue(path)
+
+    override fun readDirectory(path: String): Map<String, String> = directories.getValue(path)
 }

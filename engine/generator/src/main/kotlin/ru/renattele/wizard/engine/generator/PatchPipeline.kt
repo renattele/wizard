@@ -13,6 +13,7 @@ data class GenerationRequest(
     val plan: GenerationPlan,
     val files: Map<String, String> = emptyMap(),
     val exportFormat: ExportFormatV1? = null,
+    val resourceLoader: TemplateResourceLoader = EmptyTemplateResourceLoader,
 )
 
 data class GenerationResult(
@@ -20,3 +21,16 @@ data class GenerationResult(
     val generationReport: GenerationReportV1,
     val artifact: GeneratedArtifactV1? = null,
 )
+
+interface TemplateResourceLoader {
+    fun readText(path: String): String
+    fun readDirectory(path: String): Map<String, String>
+    fun readBinaryDirectory(path: String): Map<String, ByteArray> = emptyMap()
+}
+
+object EmptyTemplateResourceLoader : TemplateResourceLoader {
+    override fun readText(path: String): String = error("Template resource loader is not configured for '$path'")
+
+    override fun readDirectory(path: String): Map<String, String> =
+        error("Template resource loader is not configured for '$path'")
+}

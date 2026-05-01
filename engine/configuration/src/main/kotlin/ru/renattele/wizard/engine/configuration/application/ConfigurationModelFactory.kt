@@ -104,6 +104,7 @@ class ConfigurationModelFactory {
                             operation = patch.type.toDomainOperation(),
                             targetPath = patch.targetPath,
                             content = patch.content,
+                            resourcePath = patch.resourcePath,
                             find = patch.find,
                             replace = patch.replace,
                             activation = PatchActivation(
@@ -236,6 +237,8 @@ class ConfigurationModelFactory {
 
     private fun PatchOperationType.toDomainOperation(): PatchOperation = when (this) {
         PatchOperationType.ADD_FILE -> PatchOperation.ADD_FILE
+        PatchOperationType.ADD_TEMPLATE_FILE -> PatchOperation.ADD_TEMPLATE_FILE
+        PatchOperationType.ADD_TEMPLATE_DIRECTORY -> PatchOperation.ADD_TEMPLATE_DIRECTORY
         PatchOperationType.REPLACE_IN_FILE -> PatchOperation.REPLACE_IN_FILE
         PatchOperationType.APPEND_FILE -> PatchOperation.APPEND_FILE
         PatchOperationType.REMOVE_FILE -> PatchOperation.REMOVE_FILE

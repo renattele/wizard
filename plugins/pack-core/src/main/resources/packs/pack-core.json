@@ -1,6 +1,6 @@
 {
   "id": "pack-core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "schemaVersion": "1.0.0",
   "source": "LOCAL",
   "compatibility": {
@@ -13,10 +13,10 @@
     {
       "id": "android-app",
       "displayName": "Android App",
-      "description": "Android baseline template",
-      "version": "1.0.0",
-      "tags": ["android", "kotlin"],
-      "baseOptionIds": ["base-kotlin", "build-gradle-kts"]
+      "description": "Android-only multi-module starter",
+      "version": "2.0.0",
+      "tags": ["android", "gradle", "wizard"],
+      "baseOptionIds": ["base-kotlin", "build-gradle-kts", "target-android"]
     }
   ],
   "options": [
@@ -25,7 +25,7 @@
       "type": "BASE",
       "category": "base",
       "displayName": "Kotlin Base",
-      "description": "Core Kotlin project setup",
+      "description": "Core Kotlin settings and generator metadata",
       "defaultEnabled": true,
       "dependency": {
         "requiresOptionIds": [],
@@ -35,16 +35,16 @@
       },
       "version": {
         "recommended": "2.3.0",
-        "supported": ["2.2.0", "2.3.0"],
+        "supported": ["2.3.0"],
         "range": "2.x"
       },
       "parameters": [
         {
           "id": "explicitApiMode",
           "displayName": "Explicit API Mode",
-          "description": "Stores the desired explicit API policy for downstream project templates.",
+          "description": "Explicit API policy for generated Kotlin modules.",
           "type": "ENUM",
-          "defaultValue": "disabled",
+          "defaultValue": "warning",
           "allowedValues": [
             { "value": "disabled", "displayName": "Disabled" },
             { "value": "warning", "displayName": "Warning" },
@@ -54,14 +54,14 @@
         {
           "id": "enableContextParameters",
           "displayName": "Enable Context Parameters",
-          "description": "Stores whether context parameters should be enabled in generated Kotlin settings.",
+          "description": "Enable Kotlin context parameters in generated Gradle settings.",
           "type": "BOOLEAN",
           "defaultValue": "false"
         },
         {
           "id": "optInAnnotations",
           "displayName": "Opt-In Annotations",
-          "description": "Comma or newline separated opt-in annotations for generated Kotlin settings.",
+          "description": "Comma or newline separated opt-in annotations.",
           "type": "MULTILINE",
           "defaultValue": "kotlinx.coroutines.ExperimentalCoroutinesApi"
         }
@@ -69,14 +69,8 @@
       "patches": [
         {
           "type": "ADD_FILE",
-          "targetPath": "README.md",
-          "content": "# Generated Project\\n",
-          "conflictStrategy": "MERGE_WITH_RULE"
-        },
-        {
-          "type": "ADD_FILE",
           "targetPath": ".wizard/kotlin/settings.properties",
-          "content": "kotlin.package=${Package}\\nkotlin.explicitApiMode=${Param.explicitApiMode}\\nkotlin.enableContextParameters=${Param.enableContextParameters}\\nkotlin.optInAnnotations=${Param.optInAnnotations}\\n",
+          "content": "kotlin.package=${Package}\nkotlin.explicitApiMode=${Param.explicitApiMode}\nkotlin.enableContextParameters=${Param.enableContextParameters}\nkotlin.optInAnnotations=${Param.optInAnnotations}\n",
           "conflictStrategy": "MERGE_WITH_RULE"
         }
       ]
@@ -86,7 +80,7 @@
       "type": "BUILD_SYSTEM",
       "category": "build",
       "displayName": "Gradle Kotlin DSL",
-      "description": "Gradle build with Kotlin DSL",
+      "description": "Gradle build using Kotlin DSL and convention plugins",
       "defaultEnabled": true,
       "dependency": {
         "requiresOptionIds": ["base-kotlin"],
@@ -96,44 +90,8 @@
       },
       "version": {
         "recommended": "8.14.3",
-        "supported": ["8.10.2", "8.14.3"],
+        "supported": ["8.14.3"],
         "range": "8.x"
-      }
-    },
-    {
-      "id": "quality-detekt",
-      "type": "QUALITY",
-      "category": "quality",
-      "displayName": "Detekt",
-      "description": "Static analysis",
-      "dependency": {
-        "requiresOptionIds": ["build-gradle-kts"],
-        "requiresCapabilities": [],
-        "providesCapabilities": ["quality:detekt"],
-        "conflictsHard": []
-      },
-      "version": {
-        "recommended": "1.23.8",
-        "supported": ["1.23.8"],
-        "range": "1.x"
-      }
-    },
-    {
-      "id": "ci-github-actions",
-      "type": "CI",
-      "category": "ci",
-      "displayName": "GitHub Actions",
-      "description": "CI workflow for Gradle build",
-      "dependency": {
-        "requiresOptionIds": ["build-gradle-kts"],
-        "requiresCapabilities": [],
-        "providesCapabilities": ["ci:github-actions"],
-        "conflictsHard": []
-      },
-      "version": {
-        "recommended": "v4",
-        "supported": ["v4"],
-        "range": null
       }
     }
   ]

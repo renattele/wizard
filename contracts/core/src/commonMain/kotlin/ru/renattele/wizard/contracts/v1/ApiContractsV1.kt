@@ -21,7 +21,9 @@ data class WizardSelectionV1(
 data class ProjectConfigV1(
     val projectName: String? = null,
     val packageId: String? = null,
+    val modulePreset: String = "android-clean",
     val targetPlatforms: List<String> = emptyList(),
+    val featureNames: List<String> = emptyList(),
     val minSdk: Int? = null,
     val targetSdk: Int? = null,
     val uiFramework: String? = null,
@@ -29,6 +31,8 @@ data class ProjectConfigV1(
     val primaryColor: String? = null,
     val secondaryColor: String? = null,
     val ciTemplate: String? = null,
+    val releaseTarget: String = "git-release-assets",
+    val releaseArtifactTypes: List<String> = listOf("apk", "aab"),
     val qualityTools: List<String> = emptyList(),
 )
 
@@ -157,11 +161,14 @@ data class CatalogPatchSummaryV1(
     val operation: PatchOperationV1,
     val targetPath: String,
     val conflictStrategy: ConflictStrategyV1,
+    val resourcePath: String? = null,
 )
 
 @Serializable
 enum class PatchOperationV1 {
     ADD_FILE,
+    ADD_TEMPLATE_FILE,
+    ADD_TEMPLATE_DIRECTORY,
     REPLACE_IN_FILE,
     APPEND_FILE,
     REMOVE_FILE,

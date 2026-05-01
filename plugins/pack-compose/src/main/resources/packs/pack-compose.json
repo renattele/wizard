@@ -1,6 +1,6 @@
 {
   "id": "pack-compose",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "schemaVersion": "1.0.0",
   "source": "LOCAL",
   "compatibility": {
@@ -14,25 +14,74 @@
       "id": "ui-compose",
       "type": "UI_FRAMEWORK",
       "category": "ui",
-      "displayName": "Compose",
-      "description": "Compose UI toolkit",
+      "displayName": "Jetpack Compose",
+      "description": "Compose UI shell and design system",
       "defaultEnabled": true,
       "dependency": {
         "requiresOptionIds": ["target-android"],
-        "requiresCapabilities": ["build:gradle-kts"],
+        "requiresCapabilities": ["target:android"],
         "providesCapabilities": ["ui:framework", "ui:compose"],
         "conflictsHard": ["ui-xml"]
       },
       "version": {
-        "recommended": "1.10.0",
-        "supported": ["1.9.0", "1.10.0"],
+        "recommended": "1.9.3",
+        "supported": ["1.9.3"],
         "range": "1.x"
       },
       "patches": [
         {
-          "type": "APPEND_FILE",
-          "targetPath": "README.md",
-          "content": "UI: Compose\\n",
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/ui/compose",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_PLUGIN_MARKER__",
+          "replace": "    alias(libs.plugins.composeCompiler)\n    // __APP_PLUGIN_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_ANDROID_BUILD_FEATURES__",
+          "replace": "    buildFeatures {\n        compose = true\n    }\n    // __APP_ANDROID_BUILD_FEATURES__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.androidx.activity.compose)\n    implementation(libs.androidx.navigation.compose)\n    implementation(libs.androidx.lifecycle.viewmodel.compose)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/ui/build.gradle.kts",
+          "find": "id(\"wizard.android.library\")",
+          "replace": "id(\"wizard.android.library\")\n    alias(libs.plugins.composeCompiler)",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/ui/build.gradle.kts",
+          "find": "// __CORE_UI_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.compose.ui)\n    api(libs.compose.foundation)\n    api(libs.compose.material3)\n    api(libs.androidx.lifecycle.runtime.compose)\n    // __CORE_UI_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/designsystem/build.gradle.kts",
+          "find": "id(\"wizard.android.library\")",
+          "replace": "id(\"wizard.android.library\")\n    alias(libs.plugins.composeCompiler)",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/designsystem/build.gradle.kts",
+          "find": "// __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "replace": "    api(project(\":core:ui\"))\n    api(libs.compose.material3)\n    api(libs.compose.foundation)\n    api(libs.compose.ui)\n    // __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
           "conflictStrategy": "MERGE_WITH_RULE"
         }
       ]
@@ -42,10 +91,10 @@
       "type": "UI_FRAMEWORK",
       "category": "ui",
       "displayName": "XML Views",
-      "description": "Classic XML UI",
+      "description": "Classic Android views with Material components",
       "dependency": {
         "requiresOptionIds": ["target-android"],
-        "requiresCapabilities": ["build:gradle-kts"],
+        "requiresCapabilities": ["target:android"],
         "providesCapabilities": ["ui:framework", "ui:xml"],
         "conflictsHard": ["ui-compose"]
       },
@@ -53,7 +102,43 @@
         "recommended": "1.0.0",
         "supported": ["1.0.0"],
         "range": "1.x"
-      }
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/ui/xml",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_ANDROID_BUILD_FEATURES__",
+          "replace": "    buildFeatures {\n        viewBinding = true\n    }\n    // __APP_ANDROID_BUILD_FEATURES__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.androidx.appcompat)\n    implementation(libs.androidx.fragment.ktx)\n    implementation(libs.androidx.navigation.fragment)\n    implementation(libs.androidx.navigation.ui)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/ui/build.gradle.kts",
+          "find": "// __CORE_UI_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.androidx.core.ktx)\n    api(libs.androidx.appcompat)\n    api(libs.material)\n    // __CORE_UI_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/designsystem/build.gradle.kts",
+          "find": "// __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "replace": "    api(project(\":core:ui\"))\n    api(libs.material)\n    // __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
     }
   ]
 }

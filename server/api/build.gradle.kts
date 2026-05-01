@@ -20,6 +20,10 @@ dependencies {
     implementation(projects.plugins.packAndroid)
     implementation(projects.plugins.packCompose)
     implementation(projects.plugins.packArch)
+    implementation(projects.plugins.packDi)
+    implementation(projects.plugins.packLibraries)
+    implementation(projects.plugins.packQuality)
+    implementation(projects.plugins.packCi)
 
     implementation(libs.ktor.serverCore)
     implementation(libs.ktor.serverNetty)

@@ -115,8 +115,10 @@ class ApplyOptionCustomizationsUseCase {
         copy(
             targetPath = renderTemplate(targetPath, variables),
             content = content?.let { renderTemplate(it, variables) },
+            resourcePath = resourcePath?.let { renderTemplate(it, variables) },
             find = find?.let { renderTemplate(it, variables) },
             replace = replace?.let { renderTemplate(it, variables) },
+            templateVariables = variables,
         )
 
     private fun ru.renattele.wizard.engine.configuration.domain.PatchActivation.matches(

@@ -1,0 +1,19 @@
+stages:
+  - verify
+  - release
+
+verify:
+  image: eclipse-temurin:21
+  stage: verify
+  script:
+    - ./gradlew lint test assembleDebug
+
+release:
+  image: eclipse-temurin:21
+  stage: release
+  script:
+    - ./gradlew bundleRelease assembleRelease
+  artifacts:
+    paths:
+      - app/build/outputs/apk/release/
+      - app/build/outputs/bundle/release/

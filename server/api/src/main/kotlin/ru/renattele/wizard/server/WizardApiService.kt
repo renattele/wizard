@@ -50,14 +50,24 @@ import ru.renattele.wizard.engine.configuration.domain.PreparedGeneration
 import ru.renattele.wizard.engine.configuration.domain.Problem
 import ru.renattele.wizard.engine.configuration.domain.ProblemCode
 import ru.renattele.wizard.engine.configuration.domain.ProblemSeverity
+import ru.renattele.wizard.engine.generator.ClasspathTemplateResourceLoader
 import ru.renattele.wizard.engine.generator.DeterministicPatchPipeline
 import ru.renattele.wizard.engine.generator.GenerationRequest
 import ru.renattele.wizard.engine.generator.PatchPipeline
+import ru.renattele.wizard.engine.generator.TemplateResourceLoader
 
 class WizardApiService(
     catalogProvider: CatalogProvider,
     private val pipeline: PatchPipeline = DeterministicPatchPipeline(),
+    private val resourceLoader: TemplateResourceLoader = ClasspathTemplateResourceLoader(),
 ) {
+    private data class FeatureSpec(
+        val rawName: String,
+        val packageName: String,
+        val className: String,
+        val route: String,
+    )
+
     private val loadCatalog = LoadCatalogUseCase(catalogProvider)
     private val resolveConfiguration = ResolveConfigurationUseCase(loadCatalog)
     private val verifyLock = VerifyLockUseCase(resolveConfiguration, loadCatalog)
@@ -134,6 +144,7 @@ class WizardApiService(
                                 operation = patch.operation.toApiOperation(),
                                 targetPath = patch.targetPath,
                                 conflictStrategy = patch.conflictStrategy.toApiStrategy(),
+                                resourcePath = patch.resourcePath,
                             )
                         },
                     )
@@ -160,7 +171,12 @@ class WizardApiService(
 
     fun preview(request: PreviewRequestV1): PreviewResponseV1 {
         val prepared = prepare(request.selection, request.strictMode, request.lockfile)
-        val generated = pipeline.generate(GenerationRequest(plan = prepared.plan))
+        val generated = pipeline.generate(
+            GenerationRequest(
+                plan = prepared.plan,
+                resourceLoader = resourceLoader,
+            ),
+        )
         return PreviewResponseV1(
             files = generated.files.entries.map { (path, content) ->
                 GeneratedFilePreviewV1(path = path, content = content)
@@ -177,6 +193,7 @@ class WizardApiService(
             GenerationRequest(
                 plan = prepared.plan,
                 exportFormat = request.format,
+                resourceLoader = resourceLoader,
             ),
         )
 
@@ -226,6 +243,7 @@ class WizardApiService(
             ?.takeIf { it.mode == ArchitectureModeV1.PRESET }
             ?.presetPatternId
             ?.takeIf(String::isNotBlank)
+        val projectConfig = selection.projectConfig
 
         val normalizedOptionIds = (selection.selectedOptionIds + listOfNotNull(presetArchitectureId))
             .distinct()
@@ -238,6 +256,16 @@ class WizardApiService(
                 .toSortedMap()
                 .mapValues { (_, values) -> values.toSortedMap() },
             contextVars = selection.contextVars.toSortedMap(),
+            projectConfig = projectConfig?.copy(
+                featureNames = projectConfig.featureNames
+                    .map(String::trim)
+                    .filter(String::isNotBlank)
+                    .distinct(),
+                releaseArtifactTypes = projectConfig.releaseArtifactTypes
+                    .map(String::trim)
+                    .filter(String::isNotBlank)
+                    .distinct(),
+            ),
         )
     }
 
@@ -250,34 +278,155 @@ class WizardApiService(
     private fun buildAdditionalPatchBatches(selection: WizardSelectionV1): List<AdditionalPatchBatch> {
         val templateVars = templateVariables(selection)
         val batches = mutableListOf<AdditionalPatchBatch>()
+        val features = featureSpecs(selection)
+        val uiMode = selectedUiMode(selection)
+        val selectedArchitecture = selectedArchitectureId(selection)
+        val architectureTemplateId = selectedArchitecture?.removePrefix("arch-")
+
+        features.forEach { feature ->
+            val featureVars = templateVars + featureVariables(feature) + mapOf(
+                "ArchitectureViewModelSuffix" to architectureViewModelSuffix(selection),
+            )
+            val featureRoot = "feature/${feature.packageName}"
+            val presentationRoot = "$featureRoot/presentation"
+
+            batches += AdditionalPatchBatch(
+                sourceId = "feature:${feature.packageName}:domain",
+                patches = listOf(
+                    PatchSpec(
+                        operation = PatchOperation.ADD_TEMPLATE_DIRECTORY,
+                        targetPath = "$featureRoot/domain",
+                        content = null,
+                        resourcePath = "packs/templates/feature/domain",
+                        find = null,
+                        replace = null,
+                        conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                        templateVariables = featureVars,
+                    ),
+                ),
+            )
+            batches += AdditionalPatchBatch(
+                sourceId = "feature:${feature.packageName}:data",
+                patches = listOf(
+                    PatchSpec(
+                        operation = PatchOperation.ADD_TEMPLATE_DIRECTORY,
+                        targetPath = "$featureRoot/data",
+                        content = null,
+                        resourcePath = "packs/templates/feature/data",
+                        find = null,
+                        replace = null,
+                        conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                        templateVariables = featureVars,
+                    ),
+                ),
+            )
+            batches += AdditionalPatchBatch(
+                sourceId = "feature:${feature.packageName}:presentation-base",
+                patches = listOf(
+                    PatchSpec(
+                        operation = PatchOperation.ADD_TEMPLATE_DIRECTORY,
+                        targetPath = presentationRoot,
+                        content = null,
+                        resourcePath = when (uiMode) {
+                            "compose" -> "packs/templates/feature/compose/presentation"
+                            else -> "packs/templates/feature/xml/presentation"
+                        },
+                        find = null,
+                        replace = null,
+                        conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                        templateVariables = featureVars,
+                    ),
+                ),
+            )
+
+            when {
+                selectedArchitecture != null -> {
+                    val architectureResourcePath = "packs/templates/architecture/$architectureTemplateId/$uiMode"
+                    val targetDir = when (uiMode) {
+                        "compose" -> "$presentationRoot/src/main/kotlin/${templateVars.getValue("PackagePath")}/feature/${feature.packageName}/presentation"
+                        else -> "$presentationRoot/src/main/kotlin/${templateVars.getValue("PackagePath")}/feature/${feature.packageName}/presentation"
+                    }
+                    batches += AdditionalPatchBatch(
+                        sourceId = "architecture:$selectedArchitecture:${feature.packageName}",
+                        patches = listOf(
+                            PatchSpec(
+                                operation = PatchOperation.ADD_TEMPLATE_DIRECTORY,
+                                targetPath = targetDir,
+                                content = null,
+                                resourcePath = architectureResourcePath,
+                                find = null,
+                                replace = null,
+                                conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                                templateVariables = featureVars,
+                            ),
+                        ),
+                    )
+                }
+
+                selection.architecture?.mode == ArchitectureModeV1.CUSTOM -> {
+                    val targetDir = "$presentationRoot/src/main/kotlin/${templateVars.getValue("PackagePath")}/feature/${feature.packageName}/presentation"
+                    val placeholderContent = if (uiMode == "compose") {
+                        "package ${templateVars.getValue("Package")}.feature.${feature.packageName}.presentation\n\nimport androidx.compose.material3.Text\nimport androidx.compose.runtime.Composable\n\n@Composable\nfun ${feature.className}Screen() {\n    Text(text = \"${feature.className}\")\n}\n"
+                    } else {
+                        "package ${templateVars.getValue("Package")}.feature.${feature.packageName}.presentation\n\nimport androidx.fragment.app.Fragment\n\nclass ${feature.className}Fragment : Fragment(R.layout.fragment_${feature.packageName})\n"
+                    }
+                    batches += AdditionalPatchBatch(
+                        sourceId = "custom-placeholder:${feature.packageName}",
+                        patches = listOf(
+                            PatchSpec(
+                                operation = PatchOperation.ADD_FILE,
+                                targetPath = "$targetDir/${if (uiMode == "compose") "${feature.className}Screen.kt" else "${feature.className}Fragment.kt"}",
+                                content = placeholderContent,
+                                find = null,
+                                replace = null,
+                                conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
 
         val architecture = selection.architecture
         if (architecture?.mode == ArchitectureModeV1.CUSTOM) {
-            architecture.customComponentTypes.forEach { component ->
-                val componentVars = templateVars + mapOf(
-                    "ComponentId" to component.id,
-                    "ComponentName" to component.displayName,
-                    "Layer" to component.layer,
-                    "AllowedDependencies" to component.allowedDependencyTypeIds.joinToString(", "),
-                )
-                val rawPath = renderTemplate(component.fileNameTemplate, componentVars)
-                val normalizedPath = normalizePath(
-                    if (rawPath.contains('/')) rawPath else "custom/${component.layer.lowercase()}/$rawPath",
-                )
-                val renderedSource = renderTemplate(component.sourceTemplate, componentVars)
-                batches += AdditionalPatchBatch(
-                    sourceId = "custom-component:${component.id}",
-                    patches = listOf(
-                        PatchSpec(
-                            operation = PatchOperation.ADD_FILE,
-                            targetPath = normalizedPath,
-                            content = renderedSource,
-                            find = null,
-                            replace = null,
-                            conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+            features.forEach { feature ->
+                architecture.customComponentTypes.forEach { component ->
+                    val moduleName = when (component.layer.lowercase()) {
+                        "presentation" -> "presentation"
+                        "domain" -> "domain"
+                        "data" -> "data"
+                        else -> throw IllegalArgumentException("Unsupported custom component layer '${component.layer}'")
+                    }
+                    val componentVars = templateVars + featureVariables(feature) + mapOf(
+                        "ComponentId" to component.id,
+                        "ComponentName" to component.displayName,
+                        "Layer" to component.layer,
+                        "AllowedDependencies" to component.allowedDependencyTypeIds.joinToString(", "),
+                    )
+                    val rawPath = renderTemplate(component.fileNameTemplate, componentVars)
+                    val defaultSourceDir = "feature/${feature.packageName}/$moduleName/src/main/kotlin/${templateVars.getValue("PackagePath")}/feature/${feature.packageName}/${component.layer.lowercase()}"
+                    val normalizedPath = normalizePath(
+                        if (rawPath.contains('/')) {
+                            "feature/${feature.packageName}/$moduleName/$rawPath"
+                        } else {
+                            "$defaultSourceDir/$rawPath"
+                        },
+                    )
+                    val renderedSource = renderTemplate(component.sourceTemplate, componentVars)
+                    batches += AdditionalPatchBatch(
+                        sourceId = "custom-component:${feature.packageName}:${component.id}",
+                        patches = listOf(
+                            PatchSpec(
+                                operation = PatchOperation.ADD_FILE,
+                                targetPath = normalizedPath,
+                                content = renderedSource,
+                                find = null,
+                                replace = null,
+                                conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                            ),
                         ),
-                    ),
-                )
+                    )
+                }
             }
         }
 
@@ -304,6 +453,9 @@ class WizardApiService(
 
     private fun templateVariables(selection: WizardSelectionV1): Map<String, String> {
         val projectConfig = selection.projectConfig
+        val features = featureSpecs(selection)
+        val startFeature = features.first()
+        val selectedArchitecture = selectedArchitectureId(selection)
         val vars = linkedMapOf<String, String>()
         vars += selection.contextVars.toSortedMap()
         vars["TemplateId"] = selection.templateId
@@ -311,14 +463,53 @@ class WizardApiService(
         val packageId = projectConfig?.packageId?.takeIf(String::isNotBlank) ?: "wizard.generated"
         vars["Package"] = packageId
         vars["PackagePath"] = packageId.replace('.', '/')
-        projectConfig?.uiFramework?.takeIf(String::isNotBlank)?.let { vars["UiFramework"] = it }
-        projectConfig?.designSystemPrefix?.takeIf(String::isNotBlank)?.let { vars["DesignSystemPrefix"] = it }
-        projectConfig?.primaryColor?.takeIf(String::isNotBlank)?.let { vars["PrimaryColor"] = it }
-        projectConfig?.secondaryColor?.takeIf(String::isNotBlank)?.let { vars["SecondaryColor"] = it }
+        vars["ModulePreset"] = projectConfig?.modulePreset ?: "android-clean"
+        vars["MinSdk"] = (projectConfig?.minSdk ?: 24).toString()
+        vars["TargetSdk"] = (projectConfig?.targetSdk ?: 35).toString()
+        vars["ReleaseTarget"] = projectConfig?.releaseTarget ?: "git-release-assets"
+        vars["ReleaseArtifactTypesCsv"] = projectConfig?.releaseArtifactTypes?.joinToString(", ").orEmpty()
+        vars["UiFramework"] = selectedUiMode(selection)
+        vars["ArchitectureViewModelSuffix"] = architectureViewModelSuffix(selection)
+        vars["DesignSystemPrefix"] = projectConfig?.designSystemPrefix?.takeIf(String::isNotBlank) ?: "T"
+        vars["PrimaryColor"] = projectConfig?.primaryColor?.takeIf(String::isNotBlank) ?: "#6750A4"
+        vars["SecondaryColor"] = projectConfig?.secondaryColor?.takeIf(String::isNotBlank) ?: "#625B71"
+        vars["PrimaryColorHex"] = toComposeColor(projectConfig?.primaryColor, "#6750A4")
+        vars["SecondaryColorHex"] = toComposeColor(projectConfig?.secondaryColor, "#625B71")
+        vars["PrimaryColorXml"] = toXmlColor(projectConfig?.primaryColor, "#6750A4")
+        vars["SecondaryColorXml"] = toXmlColor(projectConfig?.secondaryColor, "#625B71")
         projectConfig?.ciTemplate?.takeIf(String::isNotBlank)?.let { vars["CiTemplate"] = it }
         selection.architecture?.presetPatternId?.takeIf(String::isNotBlank)?.let { vars["PresetPattern"] = it }
+        vars["FeatureIncludes"] = features.joinToString(separator = "\n") { feature ->
+            listOf(
+                "include(\":feature:${feature.packageName}:presentation\")",
+                "include(\":feature:${feature.packageName}:domain\")",
+                "include(\":feature:${feature.packageName}:data\")",
+            ).joinToString(separator = "\n")
+        }
+        vars["FeatureReadmeList"] = features.joinToString(separator = "\n") { feature ->
+            "- `feature:${feature.packageName}:presentation`, `feature:${feature.packageName}:domain`, `feature:${feature.packageName}:data`"
+        }
+        vars["AppFeaturePresentationDependencies"] = features.joinToString(separator = "\n") { feature ->
+            "    implementation(project(\":feature:${feature.packageName}:presentation\"))"
+        }
+        vars["StartFeatureRoute"] = startFeature.route
+        vars["StartFeaturePackage"] = startFeature.packageName
+        vars["StartFeatureClass"] = startFeature.className
+        vars["FeatureXmlDestinations"] = features.joinToString(separator = ",\n") { feature ->
+            "    FeatureDestination(route = \"${feature.route}\", title = \"${feature.className}\")"
+        }
+        vars["FeatureComposableImports"] = features
+            .map { feature ->
+                composeNavigationImports(packageId, feature, selectedArchitecture, architectureViewModelSuffix(selection))
+            }
+            .filter(String::isNotBlank)
+            .distinct()
+            .joinToString(separator = "\n")
+        vars["FeatureComposableDestinations"] = features.joinToString(separator = "\n") { feature ->
+            composeDestinationBlock(feature, selectedArchitecture, architectureViewModelSuffix(selection))
+        }
         if ("Feature" !in vars) {
-            vars["Feature"] = "SampleFeature"
+            vars["Feature"] = startFeature.className
         }
         return vars
     }
@@ -344,7 +535,20 @@ class WizardApiService(
     }
 
     private fun validateCustomization(selection: WizardSelectionV1) {
-        val architecture = selection.architecture ?: return
+        val projectConfig = requireNotNull(selection.projectConfig) {
+            "Project configuration is required"
+        }
+        require(projectConfig.projectName?.isNotBlank() == true) { "projectName must not be blank" }
+        require(projectConfig.packageId?.isNotBlank() == true) { "packageId must not be blank" }
+        require(projectConfig.featureNames.isNotEmpty()) { "featureNames must contain at least one feature" }
+
+        val architecture = selection.architecture
+        require(
+            architecture?.mode == ArchitectureModeV1.CUSTOM ||
+                selection.selectedOptionIds.any { it.startsWith("arch-") },
+        ) { "One architecture preset or custom architecture is required" }
+
+        if (architecture == null) return
         if (architecture.mode == ArchitectureModeV1.CUSTOM && architecture.customComponentTypes.isEmpty()) {
             throw IllegalArgumentException("Custom architecture mode requires at least one component type")
         }
@@ -365,6 +569,102 @@ class WizardApiService(
                 require(!patch.replace.isNullOrBlank()) { "Replace patch must define replacement content" }
             }
         }
+    }
+
+    private fun selectedUiMode(selection: WizardSelectionV1): String = when {
+        "ui-compose" in selection.selectedOptionIds -> "compose"
+        "ui-xml" in selection.selectedOptionIds -> "xml"
+        selection.projectConfig?.uiFramework?.equals("xml", ignoreCase = true) == true -> "xml"
+        else -> "compose"
+    }
+
+    private fun selectedArchitectureId(selection: WizardSelectionV1): String? =
+        selection.selectedOptionIds.firstOrNull { it in setOf("arch-mvvm", "arch-mvi", "arch-mvp") }
+
+    private fun featureSpecs(selection: WizardSelectionV1): List<FeatureSpec> =
+        selection.projectConfig?.featureNames
+            .orEmpty()
+            .map { rawName ->
+                val tokens = rawName
+                    .trim()
+                    .split(Regex("[^A-Za-z0-9]+"))
+                    .filter(String::isNotBlank)
+                require(tokens.isNotEmpty()) { "Feature name '$rawName' must contain letters or digits" }
+                val packageName = tokens.joinToString(separator = "") { it.lowercase() }
+                val className = tokens.joinToString(separator = "") { token ->
+                    token.lowercase().replaceFirstChar { char -> char.uppercase() }
+                }
+                FeatureSpec(
+                    rawName = rawName,
+                    packageName = packageName,
+                    className = className,
+                    route = packageName,
+                )
+            }
+
+    private fun featureVariables(feature: FeatureSpec): Map<String, String> = mapOf(
+        "Feature" to feature.className,
+        "FeatureClass" to feature.className,
+        "FeaturePackage" to feature.packageName,
+        "FeatureRoute" to feature.route,
+        "FeatureName" to feature.rawName,
+    )
+
+    private fun architectureViewModelSuffix(selection: WizardSelectionV1): String =
+        selection.optionParameters["arch-mvvm"]
+            ?.get("viewModelSuffix")
+            ?.takeIf(String::isNotBlank)
+            ?: "ViewModel"
+
+    private fun composeNavigationImports(
+        packageId: String,
+        feature: FeatureSpec,
+        architectureId: String?,
+        viewModelSuffix: String,
+    ): String = when (architectureId) {
+        "arch-mvvm" ->
+            "import $packageId.feature.${feature.packageName}.presentation.${feature.className}$viewModelSuffix\n" +
+                "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen"
+        "arch-mvi" ->
+            "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen\n" +
+                "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Store"
+        "arch-mvp" -> "import $packageId.feature.${feature.packageName}.presentation.${feature.className}Screen"
+        else -> "import androidx.compose.material3.Text"
+    }
+
+    private fun composeDestinationBlock(
+        feature: FeatureSpec,
+        architectureId: String?,
+        viewModelSuffix: String,
+    ): String = when (architectureId) {
+        "arch-mvvm" ->
+            "        composable(route = \"${feature.route}\") {\n" +
+                "            val viewModel = ${feature.className}$viewModelSuffix()\n" +
+                "            ${feature.className}Screen(state = viewModel.state)\n" +
+                "        }"
+        "arch-mvi" ->
+            "        composable(route = \"${feature.route}\") {\n" +
+                "            val store = ${feature.className}Store()\n" +
+                "            ${feature.className}Screen(state = store.state)\n" +
+                "        }"
+        "arch-mvp" ->
+            "        composable(route = \"${feature.route}\") {\n" +
+                "            ${feature.className}Screen()\n" +
+                "        }"
+        else ->
+            "        composable(route = \"${feature.route}\") {\n" +
+                "            Text(text = \"${feature.className}\")\n" +
+                "        }"
+    }
+
+    private fun toComposeColor(color: String?, fallback: String): String {
+        val normalized = toXmlColor(color, fallback).removePrefix("#")
+        return "0xFF$normalized"
+    }
+
+    private fun toXmlColor(color: String?, fallback: String): String {
+        val normalized = color?.trim().orEmpty()
+        return if (normalized.matches(Regex("^#[0-9A-Fa-f]{6}$"))) normalized else fallback
     }
 
     private fun ru.renattele.wizard.engine.configuration.domain.ResolvedConfiguration.toApiResponse(
@@ -460,6 +760,8 @@ class WizardApiService(
 
     private fun PatchOperation.toApiOperation(): PatchOperationV1 = when (this) {
         PatchOperation.ADD_FILE -> PatchOperationV1.ADD_FILE
+        PatchOperation.ADD_TEMPLATE_FILE -> PatchOperationV1.ADD_TEMPLATE_FILE
+        PatchOperation.ADD_TEMPLATE_DIRECTORY -> PatchOperationV1.ADD_TEMPLATE_DIRECTORY
         PatchOperation.REPLACE_IN_FILE -> PatchOperationV1.REPLACE_IN_FILE
         PatchOperation.APPEND_FILE -> PatchOperationV1.APPEND_FILE
         PatchOperation.REMOVE_FILE -> PatchOperationV1.REMOVE_FILE
@@ -480,6 +782,8 @@ class WizardApiService(
 
     private fun PatchOperationV1.toDomainOperation(): PatchOperation = when (this) {
         PatchOperationV1.ADD_FILE -> PatchOperation.ADD_FILE
+        PatchOperationV1.ADD_TEMPLATE_FILE -> PatchOperation.ADD_TEMPLATE_FILE
+        PatchOperationV1.ADD_TEMPLATE_DIRECTORY -> PatchOperation.ADD_TEMPLATE_DIRECTORY
         PatchOperationV1.REPLACE_IN_FILE -> PatchOperation.REPLACE_IN_FILE
         PatchOperationV1.APPEND_FILE -> PatchOperation.APPEND_FILE
         PatchOperationV1.REMOVE_FILE -> PatchOperation.REMOVE_FILE

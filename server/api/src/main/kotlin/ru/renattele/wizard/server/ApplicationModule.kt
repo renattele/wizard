@@ -1,6 +1,7 @@
 package ru.renattele.wizard.server
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
@@ -12,7 +13,9 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.defaultheaders.DefaultHeaders
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
@@ -46,6 +49,10 @@ object ApplicationModule {
             "packs/pack-android.json",
             "packs/pack-compose.json",
             "packs/pack-arch.json",
+            "packs/pack-di.json",
+            "packs/pack-libraries.json",
+            "packs/pack-quality.json",
+            "packs/pack-ci.json",
         ),
     )
 
@@ -119,6 +126,20 @@ object ApplicationModule {
                     call.respond(apiService.export(request))
                 }
 
+                post("/export/download") {
+                    val request = call.receive<ExportRequestV1>()
+                    val export = apiService.export(request)
+                    val bytes = java.util.Base64.getDecoder().decode(export.artifact.archiveBase64)
+                    call.response.header(
+                        HttpHeaders.ContentDisposition,
+                        "attachment; filename=\"${export.artifact.fileName}\"",
+                    )
+                    call.respondBytes(
+                        bytes = bytes,
+                        contentType = io.ktor.http.ContentType.parse(export.artifact.mediaType),
+                    )
+                }
+
                 get("/openapi") {
                     val contract = mapOf(
                         "openapi" to "3.1.0",
@@ -128,6 +149,7 @@ object ApplicationModule {
                             "/api/v1/resolve" to mapOf("post" to mapOf("summary" to "Resolve")),
                             "/api/v1/preview" to mapOf("post" to mapOf("summary" to "Preview")),
                             "/api/v1/export" to mapOf("post" to mapOf("summary" to "Export")),
+                            "/api/v1/export/download" to mapOf("post" to mapOf("summary" to "Export Download")),
                         ),
                     )
                     call.respond(contract)

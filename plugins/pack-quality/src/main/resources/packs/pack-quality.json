@@ -1,0 +1,94 @@
+{
+  "id": "pack-quality",
+  "version": "2.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "quality-detekt",
+      "type": "QUALITY",
+      "category": "quality",
+      "displayName": "Detekt",
+      "description": "Static analysis with shared configuration",
+      "dependency": {
+        "requiresOptionIds": ["build-gradle-kts", "target-android"],
+        "requiresCapabilities": ["build:gradle-kts", "target:android"],
+        "providesCapabilities": ["quality:detekt"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "1.23.8",
+        "supported": ["1.23.8"],
+        "range": "1.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/quality/detekt",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "build.gradle.kts",
+          "find": "// __ROOT_OPTION_PLUGINS__",
+          "replace": "    alias(libs.plugins.detekt)\n    // __ROOT_OPTION_PLUGINS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "build.gradle.kts",
+          "find": "// __ROOT_OPTION_CONFIG__",
+          "replace": "subprojects {\n    apply(plugin = \"io.gitlab.arturbosch.detekt\")\n\n    extensions.configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {\n        config.setFrom(files(\"$rootDir/config/detekt/detekt.yml\"))\n        buildUponDefaultConfig = true\n    }\n}\n\n// __ROOT_OPTION_CONFIG__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "quality-ktlint",
+      "type": "QUALITY",
+      "category": "quality",
+      "displayName": "ktlint",
+      "description": "Ktlint Gradle integration",
+      "dependency": {
+        "requiresOptionIds": ["build-gradle-kts", "target-android"],
+        "requiresCapabilities": ["build:gradle-kts", "target:android"],
+        "providesCapabilities": ["quality:ktlint"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "12.2.0",
+        "supported": ["12.2.0"],
+        "range": "12.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/quality/ktlint",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "build.gradle.kts",
+          "find": "// __ROOT_OPTION_PLUGINS__",
+          "replace": "    alias(libs.plugins.ktlint)\n    // __ROOT_OPTION_PLUGINS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "build.gradle.kts",
+          "find": "// __ROOT_OPTION_CONFIG__",
+          "replace": "subprojects {\n    apply(plugin = \"org.jlleitschuh.gradle.ktlint\")\n}\n\n// __ROOT_OPTION_CONFIG__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    }
+  ]
+}

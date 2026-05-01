@@ -82,10 +82,12 @@ data class PatchSpec(
     val operation: PatchOperation,
     val targetPath: String,
     val content: String?,
+    val resourcePath: String? = null,
     val find: String?,
     val replace: String?,
     val activation: PatchActivation = PatchActivation(),
     val conflictStrategy: PatchConflictStrategy,
+    val templateVariables: Map<String, String> = emptyMap(),
 )
 
 data class PatchActivation(
@@ -95,6 +97,8 @@ data class PatchActivation(
 
 enum class PatchOperation {
     ADD_FILE,
+    ADD_TEMPLATE_FILE,
+    ADD_TEMPLATE_DIRECTORY,
     REPLACE_IN_FILE,
     APPEND_FILE,
     REMOVE_FILE,

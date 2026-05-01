@@ -1,0 +1,67 @@
+{
+  "id": "pack-ci",
+  "version": "2.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "ci-github-actions",
+      "type": "CI",
+      "category": "ci",
+      "displayName": "GitHub Actions",
+      "description": "Build, verify, and release asset workflows",
+      "defaultEnabled": true,
+      "dependency": {
+        "requiresOptionIds": ["build-gradle-kts"],
+        "requiresCapabilities": ["build:gradle-kts"],
+        "providesCapabilities": ["ci:github-actions"],
+        "conflictsHard": ["ci-gitlab"]
+      },
+      "version": {
+        "recommended": "v4",
+        "supported": ["v4"],
+        "range": null
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/ci/github",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "ci-gitlab",
+      "type": "CI",
+      "category": "ci",
+      "displayName": "GitLab CI",
+      "description": "Build, verify, and release asset pipeline",
+      "dependency": {
+        "requiresOptionIds": ["build-gradle-kts"],
+        "requiresCapabilities": ["build:gradle-kts"],
+        "providesCapabilities": ["ci:gitlab"],
+        "conflictsHard": ["ci-github-actions"]
+      },
+      "version": {
+        "recommended": "1.0.0",
+        "supported": ["1.0.0"],
+        "range": "1.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/ci/gitlab",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    }
+  ]
+}

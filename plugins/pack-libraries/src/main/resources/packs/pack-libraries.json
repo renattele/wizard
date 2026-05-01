@@ -1,0 +1,192 @@
+{
+  "id": "pack-libraries",
+  "version": "2.0.0",
+  "schemaVersion": "1.0.0",
+  "source": "LOCAL",
+  "compatibility": {
+    "apiRange": "1.x",
+    "engineRange": "1.x",
+    "kotlinRange": "2.3.x",
+    "gradleRange": "8.x"
+  },
+  "options": [
+    {
+      "id": "library-retrofit",
+      "type": "LIBRARY",
+      "category": "network",
+      "displayName": "Retrofit + OkHttp",
+      "description": "HTTP client stack in core:network",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:retrofit", "network:http-client"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "2.11.0",
+        "supported": ["2.11.0"],
+        "range": "2.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/retrofit",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/network/build.gradle.kts",
+          "find": "// __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.retrofit)\n    api(libs.okhttp)\n    implementation(libs.okhttp.logging)\n    implementation(libs.kotlinx.serialization.json)\n    // __CORE_NETWORK_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-room",
+      "type": "LIBRARY",
+      "category": "database",
+      "displayName": "Room",
+      "description": "Room persistence layer in core:database",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:room", "database:room"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "2.8.1",
+        "supported": ["2.8.1"],
+        "range": "2.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/room",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/database/build.gradle.kts",
+          "find": "// __CORE_DATABASE_PLUGIN_MARKER__",
+          "replace": "    alias(libs.plugins.ksp)\n    // __CORE_DATABASE_PLUGIN_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/database/build.gradle.kts",
+          "find": "// __CORE_DATABASE_DEPENDENCY_MARKER__",
+          "replace": "    api(libs.room.runtime)\n    api(libs.room.ktx)\n    ksp(libs.room.compiler)\n    // __CORE_DATABASE_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-coil",
+      "type": "LIBRARY",
+      "category": "image",
+      "displayName": "Coil",
+      "description": "Image loading helpers",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:coil"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "3.3.0",
+        "supported": ["3.3.0"],
+        "range": "3.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/coil/compose",
+          "activation": {
+            "requiresOptionIds": ["ui-compose"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/designsystem/build.gradle.kts",
+          "find": "// __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.coil.compose)\n    // __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "activation": {
+            "requiresOptionIds": ["ui-compose"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/coil/xml",
+          "activation": {
+            "requiresOptionIds": ["ui-xml"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "core/designsystem/build.gradle.kts",
+          "find": "// __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.coil)\n    // __CORE_DESIGNSYSTEM_DEPENDENCY_MARKER__",
+          "activation": {
+            "requiresOptionIds": ["ui-xml"]
+          },
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    },
+    {
+      "id": "library-timber",
+      "type": "LIBRARY",
+      "category": "logging",
+      "displayName": "Timber",
+      "description": "Application logging setup",
+      "dependency": {
+        "requiresOptionIds": ["target-android"],
+        "requiresCapabilities": ["target:android"],
+        "providesCapabilities": ["library:timber"],
+        "conflictsHard": []
+      },
+      "version": {
+        "recommended": "5.0.1",
+        "supported": ["5.0.1"],
+        "range": "5.x"
+      },
+      "patches": [
+        {
+          "type": "ADD_TEMPLATE_DIRECTORY",
+          "targetPath": "",
+          "resourcePath": "packs/templates/libraries/timber",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/build.gradle.kts",
+          "find": "// __APP_DEPENDENCY_MARKER__",
+          "replace": "    implementation(libs.timber)\n    // __APP_DEPENDENCY_MARKER__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_IMPORTS__",
+          "replace": "import ${Package}.logging.DebugTree\nimport timber.log.Timber\n// __APPLICATION_IMPORTS__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        },
+        {
+          "type": "REPLACE_IN_FILE",
+          "targetPath": "app/src/main/kotlin/${PackagePath}/GeneratedApplication.kt",
+          "find": "// __APPLICATION_INIT__",
+          "replace": "        Timber.plant(DebugTree())\n        // __APPLICATION_INIT__",
+          "conflictStrategy": "MERGE_WITH_RULE"
+        }
+      ]
+    }
+  ]
+}

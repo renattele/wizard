@@ -107,6 +107,7 @@ data class PatchOperationManifest(
     val type: PatchOperationType,
     val targetPath: String,
     val content: String? = null,
+    val resourcePath: String? = null,
     val find: String? = null,
     val replace: String? = null,
     val activation: PatchActivationManifest = PatchActivationManifest(),
@@ -122,6 +123,8 @@ data class PatchActivationManifest(
 @Serializable
 enum class PatchOperationType {
     ADD_FILE,
+    ADD_TEMPLATE_FILE,
+    ADD_TEMPLATE_DIRECTORY,
     REPLACE_IN_FILE,
     APPEND_FILE,
     REMOVE_FILE,

@@ -1,0 +1,4 @@
+<resources>
+    <color name="primary">${PrimaryColorXml}</color>
+    <color name="secondary">${SecondaryColorXml}</color>
+</resources>
