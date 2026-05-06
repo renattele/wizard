@@ -860,6 +860,15 @@ class ApplicationModuleTest {
                 } + "Repository"
         }
 
+        assertNoOverIndentedGradleDeclarations(appBuild, "$label app/build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(rootBuild, "$label build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(commonBuild, "$label core/common/build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(uiBuild, "$label core/ui/build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(designSystemBuild, "$label core/designsystem/build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(databaseBuild, "$label core/database/build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(networkBuild, "$label core/network/build.gradle.kts")
+        assertNoOverIndentedGradleDeclarations(testingBuild, "$label core/testing/build.gradle.kts")
+
         if (selection.templateId == "android-app-lite" && optionIds.none { it in setOf("library-retrofit", "library-ktor-client", "library-moshi", "library-kotlinx-serialization", "library-chucker") }) {
             assertTrue("core/network/build.gradle.kts" !in files, "$label lite template should not include core:network")
         }
@@ -1054,6 +1063,16 @@ class ApplicationModuleTest {
             assertTrue(files.keys.any { it.endsWith("Interactor.kt") }, "$label missing viper interactor")
         }
         assertTrue("\"featureNames\": [" in configuration, "$label missing featureNames in configuration")
+    }
+
+    private fun assertNoOverIndentedGradleDeclarations(content: String, label: String) {
+        val overIndentedDeclaration = Regex(
+            pattern = """(?m)^ {8,}(alias|api|implementation|debugImplementation|releaseImplementation|kapt|ksp)\(""",
+        )
+        assertTrue(
+            overIndentedDeclaration.find(content) == null,
+            "$label contains over-indented Gradle declarations:\n$content",
+        )
     }
 
     private fun metadataCatalog(): ConfigurationCatalog =

@@ -305,6 +305,12 @@ private class VirtualFileTree(initialFiles: Map<String, String>) {
             return
         }
 
+        replaceIndentedMarkerLine(existing, find, replace)?.let { updated ->
+            files[targetPath] = updated
+            appliedFiles += targetPath
+            return
+        }
+
         if (!existing.contains(find)) {
             mergeReplace(optionId, targetPath, existing, replace, strategy, appliedFiles, skipped)
             return
@@ -313,6 +319,45 @@ private class VirtualFileTree(initialFiles: Map<String, String>) {
         files[targetPath] = existing.replace(find, replace)
         appliedFiles += targetPath
     }
+
+    private fun replaceIndentedMarkerLine(
+        existing: String,
+        find: String,
+        replace: String,
+    ): String? {
+        if (find.any { it == '\n' || it == '\r' }) return null
+
+        val escapedFind = Regex.escape(find)
+        val markerLine = Regex("(?m)^([ \\t]*)$escapedFind[ \\t]*(\\r?\\n|$)")
+        val match = markerLine.find(existing) ?: return null
+        val lineIndent = match.groupValues[1]
+        val lineBreak = match.groupValues[2]
+        val replacement = replace
+            .removeIndentPrefix(lineIndent.length)
+            .prependIndentToNonBlankLines(lineIndent)
+        val adjustedReplacement = if (lineBreak.isEmpty() || replacement.endsWith(lineBreak)) {
+            replacement
+        } else {
+            replacement + lineBreak
+        }
+        return existing.replaceRange(match.range, adjustedReplacement)
+    }
+
+    private fun String.removeIndentPrefix(indentWidth: Int): String =
+        lineSequence()
+            .joinToString("\n") { line ->
+                if (line.isBlank()) {
+                    line
+                } else {
+                    line.drop(line.takeWhile { it == ' ' }.length.coerceAtMost(indentWidth))
+                }
+            }
+
+    private fun String.prependIndentToNonBlankLines(indent: String): String =
+        lineSequence()
+            .joinToString("\n") { line ->
+                if (line.isBlank()) line else indent + line
+            }
 
     fun removeFile(
         optionId: String,

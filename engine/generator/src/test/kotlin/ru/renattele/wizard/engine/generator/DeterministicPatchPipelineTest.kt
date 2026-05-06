@@ -192,6 +192,85 @@ class DeterministicPatchPipelineTest {
         )
     }
 
+    @Test
+    fun `replace in file preserves marker line indentation`() {
+        val result = pipeline.generate(
+            GenerationRequest(
+                plan = testPlan().copy(
+                    resolvedOptions = listOf(
+                        ResolvedOption(
+                            id = "gradle-markers",
+                            type = OptionTypeV1.LIBRARY,
+                            category = "build",
+                            displayName = "Gradle Markers",
+                            version = "1.0.0",
+                            sourcePackId = "test",
+                            artifactCoordinates = null,
+                            artifactChecksum = null,
+                            patches = listOf(
+                                PatchSpec(
+                                    operation = PatchOperation.REPLACE_IN_FILE,
+                                    targetPath = "app/build.gradle.kts",
+                                    content = null,
+                                    find = "// __APP_PLUGIN_MARKER__",
+                                    replace = "    alias(libs.plugins.composeCompiler)\n    // __APP_PLUGIN_MARKER__",
+                                    conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                                ),
+                                PatchSpec(
+                                    operation = PatchOperation.REPLACE_IN_FILE,
+                                    targetPath = "app/build.gradle.kts",
+                                    content = null,
+                                    find = "// __APP_DEPENDENCY_MARKER__",
+                                    replace = "    implementation(libs.koin.android)\n    // __APP_DEPENDENCY_MARKER__",
+                                    conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                                ),
+                                PatchSpec(
+                                    operation = PatchOperation.REPLACE_IN_FILE,
+                                    targetPath = "app/build.gradle.kts",
+                                    content = null,
+                                    find = "// __APP_DEPENDENCY_MARKER__",
+                                    replace = "    debugImplementation(libs.chucker.debug)\n    releaseImplementation(libs.chucker.release)\n    // __APP_DEPENDENCY_MARKER__",
+                                    conflictStrategy = PatchConflictStrategy.MERGE_WITH_RULE,
+                                ),
+                            ),
+                        ),
+                    ),
+                    applyOrder = listOf("gradle-markers"),
+                    seedFiles = mapOf(
+                        "app/build.gradle.kts" to """
+                            plugins {
+                                id("wizard.android.application")
+                                // __APP_PLUGIN_MARKER__
+                            }
+
+                            dependencies {
+                                implementation(libs.material)
+                                // __APP_DEPENDENCY_MARKER__
+                            }
+                        """.trimIndent(),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            """
+            plugins {
+                id("wizard.android.application")
+                alias(libs.plugins.composeCompiler)
+            }
+
+            dependencies {
+                implementation(libs.material)
+                implementation(libs.koin.android)
+                debugImplementation(libs.chucker.debug)
+                releaseImplementation(libs.chucker.release)
+            }
+            """.trimIndent() + "\n",
+            result.files.getValue("app/build.gradle.kts"),
+        )
+    }
+
     private fun testPlan(): GenerationPlan =
         GenerationPlan(
             templateId = "android-app",
