@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:designsystem"))
 ${AppFeaturePresentationDependencies}
+${AppFeatureDomainDependencies}
 ${AppFeatureDataDependencies}
 ${AppSharedModuleDependencies}
     implementation(libs.androidx.core.ktx)

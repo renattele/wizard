@@ -604,6 +604,9 @@ class WizardApiService(
         vars["AppFeaturePresentationDependencies"] = features.joinToString(separator = "\n") { feature ->
             "    implementation(project(\":feature:${feature.packageName}:presentation\"))"
         }
+        vars["AppFeatureDomainDependencies"] = features.joinToString(separator = "\n") { feature ->
+            "    implementation(project(\":feature:${feature.packageName}:domain\"))"
+        }
         vars["AppFeatureDataDependencies"] = features.joinToString(separator = "\n") { feature ->
             "    implementation(project(\":feature:${feature.packageName}:data\"))"
         }

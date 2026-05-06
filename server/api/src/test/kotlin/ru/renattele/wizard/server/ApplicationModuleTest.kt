@@ -925,6 +925,7 @@ class ApplicationModuleTest {
             }
         }
         assertTrue("implementation(project(\":feature:home:data\"))" in appBuild, "$label missing home data app dependency")
+        assertTrue("implementation(project(\":feature:home:domain\"))" in appBuild, "$label missing home domain app dependency")
         if ("library-room" in optionIds) {
             assertTrue("alias(libs.plugins.ksp)" in databaseBuild, "$label missing room ksp plugin")
             assertTrue("ksp(libs.room.compiler)" in databaseBuild, "$label missing room compiler")
